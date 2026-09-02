@@ -1,36 +1,153 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MonitorIT — Frontend
 
-## Getting Started
+Plataforma genérica de monitorización e integración IoT/industrial.
 
-First, run the development server:
+Este es el **frontend** de la plataforma, construido con **Next.js (App Router) +
+TypeScript**. La primera aplicación es la monitorización ambiental hospitalaria,
+pero la arquitectura es reutilizable para industria, agricultura, edificios
+inteligentes, laboratorios y otros entornos IoT.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+> El monorepo contiene además la API REST en `../api` (Node.js + Express), que
+> expone los endpoints bajo `/api/v1`.
+
+## Stack tecnológico
+
+- **Next.js** (App Router) + **React 19**
+- **TypeScript**
+- **Tailwind CSS** + **shadcn/ui**
+- **TanStack Query** (caché/estado de datos de la API)
+- **React Hook Form + Zod** (formularios y validación)
+- **Recharts** (gráficas)
+- **date-fns** (fechas)
+- **Lucide React** (iconos)
+- **HLS.js** (soporte preparado para cámaras IP)
+- **next-themes** (modo claro/oscuro)
+
+## Estructura de carpetas
+
+```
+src/
+├── app/                     # Rutas (App Router)
+│   ├── page.tsx             # Página pública de inicio
+│   ├── layout.tsx           # Layout raíz (temas + sesión)
+│   ├── (publico)/           # /acerca, /tecnologias (layout público)
+│   ├── (auth)/              # /iniciar-sesion (layout de autenticación)
+│   └── (panel)/             # Rutas protegidas del panel:
+│       ├── dashboard/
+│       ├── areas/           # incluye areas/[id]
+│       ├── dispositivos/
+│       ├── sensores/
+│       ├── mediciones/
+│       ├── alertas/
+│       ├── camaras/
+│       ├── integraciones/
+│       └── configuracion/
+├── components/             # Componentes UI y de negocio
+│   ├── ui/                  # Componentes de shadcn/ui
+│   ├── layout/             # Barra lateral, cabeceras, selector de tema
+│   ├── dashboard/          # Piezas del dashboard
+│   ├── compartidos/        # Página base "en construcción", estados
+│   ├── proveedores/        # QueryProvider, ThemeProvider, proveedor de sesión
+│   └── autenticacion/      # Formulario de login, guard de rutas
+├── hooks/                  # Hooks (use-sesion)
+├── servicios/             # Cliente HTTP y servicios por entidad
+├── esquemas/              # Esquemas Zod para formularios
+├── tipos/                 # Tipos TypeScript de entidades y respuestas
+├── utilidades/            # Formato, estados, sesión, datos de demostración
+├── configuracion/          # URL de API, marca y navegación
+└── lib/                    # Utilidades de shadcn (cn)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Requisitos previos
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Node.js** 20 o superior
+- **pnpm**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Instalación
 
-## Learn More
+```bash
+# Instalar dependencias
+pnpm install
 
-To learn more about Next.js, take a look at the following resources:
+# Crear el archivo de entorno a partir de la plantilla
+cp .env.example .env.local
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Configurar en `.env.local` la URL de la API REST (debe apuntar a `/api/v1`):
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
+```
 
-## Deploy on Vercel
+## Desarrollo
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Abrir [http://localhost:3000](http://localhost:3000).
+
+## Compilación
+
+```bash
+pnpm build
+pnpm start
+```
+
+## Notas importantes
+
+### Conexión con la API (aún parcial — datos simulados)
+
+- Las páginas del panel de **dashboard** muestran datos **de demostración /
+  mock** (definidos en `src/utilidades/datos-demo.ts`), claramente marcados
+  como tales.
+- El resto de páginas del panel (`areas`, `dispositivos`, `sensores`,
+  `mediciones`, `alertas`, `camaras`, `integraciones`, `configuracion`) son
+  páginas **base / en construcción**; no consumen CRUD todavía.
+- Ya existe una capa de **servicios** (`src/servicios`) y un cliente HTTP
+  reutilizable (`src/servicios/api.ts`) para conectar cada entidad con sus
+  endpoints reales.
+
+### Nombre de los endpoints del backend
+
+La GUI usa rutas en español (`/dispositivos`), pero la API REST expone rutas en
+inglés:
+
+| Frontend (sección) | Endpoint real de la API  |
+| ------------------ | ------------------------ |
+| Áreas              | `/api/v1/areas`          |
+| Dispositivos       | `/api/v1/devices`        |
+| Sensores           | `/api/v1/sensors`        |
+| Tipos de variable  | `/api/v1/variable-types` |
+| Mediciones         | `/api/v1/measurements`   |
+| Umbrales           | `/api/v1/thresholds`     |
+| Alertas            | `/api/v1/alerts`         |
+| Cámaras            | `/api/v1/cameras`        |
+| Integraciones      | `/api/v1/integrations`   |
+| Usuarios / auth    | `/api/v1/users`          |
+
+### Autenticación
+
+- Endpoints reales: `POST /api/v1/users/login`, `POST /api/v1/users/registro`,
+  `GET /api/v1/users/perfil`.
+- Se incluye un **modo demo** para desarrollo (email `demo@monitorit.local` y
+  contraseña `demo1234`), claramente identificado. Si el backend responde, se
+  autentica contra él; si no está disponible y se usan las credenciales demo,
+  se inicia una sesión local de prueba.
+- El token JWT se almacena en `localStorage` y se inyecta como `Bearer` por el
+  cliente HTTP. La sesión se gestiona en `src/utilidades/sesion.ts` y el guard
+  del panel en `src/components/autenticacion/requerir-sesion.tsx`.
+
+### Cámaras IP
+
+- El componente `src/components/camaras/reproductor-camara.tsx` está preparado
+  para recibir URLs **HLS** o **WebRTC**. No se conecta RTSP directamente al
+  navegador. La lógica de reproducción se completará cuando el backend entregue
+  fuentes válidas (ver comentarios `TODO` en el componente).
+
+## Comandos útiles
+
+```bash
+pnpm lint   # Lint de ESLint
+pnpm build  # Compila el proyecto para producción
+```
