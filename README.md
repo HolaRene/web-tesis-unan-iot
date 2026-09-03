@@ -129,7 +129,8 @@ inglés:
 ### Autenticación
 
 - Endpoints reales: `POST /api/v1/users/login`, `POST /api/v1/users/registro`,
-  `GET /api/v1/users/perfil`.
+  `GET /api/v1/users/perfil` con el **perfil propio editado** mediante
+  `PATCH /api/v1/users/perfil`.
 - Se incluye un **modo demo** para desarrollo (email `demo@monitorit.local` y
   contraseña `demo1234`), claramente identificado. Si el backend responde, se
   autentica contra él; si no está disponible y se usan las credenciales demo,
@@ -137,6 +138,20 @@ inglés:
 - El token JWT se almacena en `localStorage` y se inyecta como `Bearer` por el
   cliente HTTP. La sesión se gestiona en `src/utilidades/sesion.ts` y el guard
   del panel en `src/components/autenticacion/requerir-sesion.tsx`.
+
+### Perfil y cambio de credenciales
+
+- **Edición de perfil** en `/mi-perfil`: permite cambiar el ``nombre`` y, de forma
+  opcional, la contraseña. El **email no se puede editar**: queda fijo al
+  registrarse y sólo un ``admin`` podría cambiarlo desde la gestión de usuarios.
+- El envío usa `PATCH /api/v1/users/perfil` (endpoint propio para cualquier
+  usuario autenticado que sólo edita su propia cuenta), **no** el
+  `PATCH /users/:id`, que sigue restringido a administradores y que sí permite
+  cambiar el email/rol de un usuario.
+- Para cambiar la contraseña se exige la **contraseña actual**.
+- Tras cambiar la contraseña conviene volver a iniciar sesión con la nueva.
+- La edición del `email`, `rol` y estado del usuario es función del **admin**
+  (gestión de usuarios), no del propio perfil.
 
 ### Cámaras IP
 

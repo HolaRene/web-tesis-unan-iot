@@ -26,7 +26,7 @@ import type {
 } from "@/tipos";
 import {
   PERFIL_DEMO,
-  actualizarPerfilUsuario as actualizarPerfilServicio,
+  actualizarPerfilPropio as actualizarPerfilServicio,
   esSesionDemo,
   iniciarSesion as iniciarSesionServicio,
   obtenerPerfilUsuario as obtenerPerfilServicio,
@@ -55,10 +55,12 @@ interface SesionContexto {
   iniciarSesion: (credenciales: CredencialesLogin) => Promise<UsuarioAutenticado>;
   /** Vuelve a pedir el perfil completo al backend y actualiza el estado. */
   refrescarPerfil: () => Promise<Usuario | null>;
-  /** Actualiza el perfil (nombre/email) en el backend. */
+  /** Actualiza el perfil propio (nombre/email y, si se pide, cambiar contraseña). */
   actualizarPerfil: (datos: {
     nombre: string;
     email: string;
+    passwordActual?: string;
+    password?: string;
   }) => Promise<Usuario>;
   /** Cierra la sesión actual. */
   cerrarSesion: () => void;
@@ -136,12 +138,21 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
   );
 
   const actualizarPerfil = useCallback(
-    async (datos: { nombre: string; email: string }) => {
-      const idUsuario = usuario?.id ?? perfil?.id;
-      if (!idUsuario) {
+    async (datos: {
+      nombre: string;
+      email: string;
+      passwordActual?: string;
+      password?: string;
+    }) => {
+      if (!usuario && !perfil) {
         throw new Error("Sin sesión activa");
       }
-      const perfilActualizado = await actualizarPerfilServicio(idUsuario, datos);
+      const perfilActualizado = await actualizarPerfilServicio({
+        nombre: datos.nombre,
+        email: datos.email,
+        passwordActual: datos.passwordActual,
+        password: datos.password,
+      });
       setPerfil(perfilActualizado);
       guardarPerfil(perfilActualizado);
       // Mantiene email/rol sincronizados en la sesión minimalista.

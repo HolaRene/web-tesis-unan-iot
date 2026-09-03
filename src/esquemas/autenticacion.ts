@@ -7,7 +7,7 @@
 import { z } from "zod";
 
 /** Roles válidos dentro del sistema. */
-export const rolUsuarioSchema = z.enum(["admin", "operador", "viewer"]);
+export const rolUsuarioSchema = z.enum(["viewer", "usuario", "admin"]);
 
 /** Esquema del formulario de inicio de sesión. */
 export const esquemaLogin = z.object({

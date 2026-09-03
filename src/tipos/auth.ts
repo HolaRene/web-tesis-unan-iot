@@ -8,7 +8,17 @@
  */
 
 /** Roles disponibles dentro del sistema. */
-export type RolUsuario = "admin" | "operador" | "viewer";
+export type RolUsuario = "viewer" | "usuario" | "admin";
+
+/** Cuerpo para actualizar el propio perfil (endpoint PATCH /users/perfil). */
+export interface DatosPerfilActualizacion {
+  nombre?: string;
+  email?: string;
+  /** Exigida al cambiar email o contraseña. */
+  passwordActual?: string;
+  /** Nueva contraseña, si se desea cambiarla. */
+  password?: string;
+}
 
 /** Usuario autenticado (datos embebidos en el JWT y devueltos en login). */
 export interface UsuarioAutenticado {

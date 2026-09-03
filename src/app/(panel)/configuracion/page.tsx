@@ -12,7 +12,7 @@ export default function PaginaConfiguracion() {
       titulo="Configuración"
       descripcion="Ajustes de la plataforma: usuarios, roles, tema y preferencias."
       pendientes={[
-        "Administración de usuarios (admin / operador / viewer).",
+        "Administración de usuarios (admin / usuario / viewer).",
         "Tipos de variable dinámicos.",
         "Umbrales y preferencias de alertas.",
       ]}

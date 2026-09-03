@@ -17,6 +17,7 @@ import { api, solicitudApi } from "./api";
 import { obtenerToken } from "@/utilidades/sesion";
 import type {
   CredencialesLogin,
+  DatosPerfilActualizacion,
   DatosRegistro,
   ResultadoLogin,
   Usuario,
@@ -104,25 +105,23 @@ export async function obtenerPerfilUsuario(): Promise<Usuario> {
   return respuesta.datos;
 }
 
-/** Campos editables del perfil de usuario. */
-export interface DatosPerfilActualizables {
-  nombre: string;
-  email: string;
-}
-
 /**
- * Actualiza el perfil del usuario (nombre/email) mediante PATCH /users/:id.
- * En modo demo no hay backend real; devuelve un perfil simulado actualizado.
+ * Actualiza el perfil PROPIO (nombre, email y/o contraseña) mediante
+ * PATCH /users/perfil. El id se obtiene de la sesión en el backend.
+ *
+ * En modo demo no hay backend real; se devuelve un perfil simulado actualizado
+ * sin validar la contraseña actual.
  */
-export async function actualizarPerfilUsuario(
-  id: string,
-  datos: DatosPerfilActualizables
+export async function actualizarPerfilPropio(
+  datos: DatosPerfilActualizacion
 ): Promise<Usuario> {
   const token = obtenerToken();
   if (token === MODO_DEMO.tokenMarcador) {
-    return { ...PERFIL_DEMO, id, ...datos };
+    const emailFinal = datos.email ?? PERFIL_DEMO.email;
+    const nombreFinal = datos.nombre ?? PERFIL_DEMO.nombre;
+    return { ...PERFIL_DEMO, nombre: nombreFinal, email: emailFinal };
   }
-  const respuesta = await solicitudApi<Usuario>(`/users/${id}`, {
+  const respuesta = await solicitudApi<Usuario>("/users/perfil", {
     metodo: "PATCH",
     datos,
   });
