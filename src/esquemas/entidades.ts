@@ -12,7 +12,7 @@ export const esquemaArea = z.object({
   tipo: z.string().trim().optional(),
   descripcion: z.string().trim().optional(),
   ubicacion: z.string().trim().optional(),
-  activo: z.boolean().default(true),
+  activo: z.boolean().optional(),
 });
 
 /** Tipo inferido del esquema de área. */

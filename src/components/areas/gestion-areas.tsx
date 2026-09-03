@@ -193,7 +193,7 @@ function AreaAcciones({ area, onEditar, onBorrar }: AccionesProps) {
       <DropdownMenuTrigger
         render={
           <Button variant="ghost" size="icon" aria-label="Acciones">
-            <span className="sr-only">Acciones</span>
+            <MoreHorizontal className="size-4" aria-hidden />
           </Button>
         }
       />
