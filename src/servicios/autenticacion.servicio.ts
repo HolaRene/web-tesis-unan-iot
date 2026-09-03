@@ -1,10 +1,11 @@
 /**
- * Servicio de autenticación.
+ * Servicio de autenticación y perfil de usuario.
  *
  * Se conecta a los endpoints reales del backend:
  *   POST /api/v1/users/login    -> inicio de sesión
  *   POST /api/v1/users/registro -> registro (opcional)
  *   GET  /api/v1/users/perfil   -> obtención del perfil (requiere token)
+ *   PATCH /api/v1/users/:id     -> actualización de datos del perfil
  *
  * Además se incluye un MODO DEMO claramente identificado para poder probar la
  * interfaz sin backend activo:
@@ -13,6 +14,7 @@
  */
 
 import { api, solicitudApi } from "./api";
+import { obtenerToken } from "@/utilidades/sesion";
 import type {
   CredencialesLogin,
   DatosRegistro,
@@ -29,27 +31,31 @@ export const MODO_DEMO = {
   tokenMarcador: "demo-token-monitorit",
 } as const;
 
-/** Usuario simulado usado en el modo demo. */
+/** Usuario simulado (autenticado) usado en el modo demo. */
 const USUARIO_DEMO: UsuarioAutenticado = {
   id: "demo-user",
   email: MODO_DEMO.email,
   rol: "admin",
 };
 
-/**
- * Indica si la sesión activa (por token) corresponde al modo demo.
- * Útil para mostrar avisos en la interfaz de que los datos son simulados.
- */
+/** Perfil de demostración usado cuando no hay API activa. */
+export const PERFIL_DEMO: Usuario = {
+  id: "demo-user",
+  nombre: "Usuario de demostración",
+  email: MODO_DEMO.email,
+  rol: "admin",
+  activo: true,
+  creado_en: new Date().toISOString(),
+};
+
+/** Indica si el token corresponde al modo demo (datos simulados). */
 export function esSesionDemo(token: string | null): boolean {
   return token === MODO_DEMO.tokenMarcador;
 }
 
 /**
- * Inicia sesión.
- *
- * Intenta autenticarse contra el backend real. Si la API no está disponible
- * (error de red) y las credenciales coinciden con las del modo demo, devuelve
- * una sesión simulada claramente marcada.
+ * Inicia sesión contra el backend. Si la API no está disponible y las
+ * credenciales coinciden con el modo demo, devuelve una sesión simulada.
  */
 export async function iniciarSesion(
   credenciales: CredencialesLogin
@@ -92,8 +98,33 @@ export async function registrarUsuario(datos: DatosRegistro): Promise<Usuario> {
   return respuesta.datos;
 }
 
-/** Obtiene el perfil del usuario autenticado actual. */
+/** Obtiene el perfil del usuario autenticado actual (GET /users/perfil). */
 export async function obtenerPerfilUsuario(): Promise<Usuario> {
   const respuesta = await api.obtener<Usuario>("/users/perfil");
+  return respuesta.datos;
+}
+
+/** Campos editables del perfil de usuario. */
+export interface DatosPerfilActualizables {
+  nombre: string;
+  email: string;
+}
+
+/**
+ * Actualiza el perfil del usuario (nombre/email) mediante PATCH /users/:id.
+ * En modo demo no hay backend real; devuelve un perfil simulado actualizado.
+ */
+export async function actualizarPerfilUsuario(
+  id: string,
+  datos: DatosPerfilActualizables
+): Promise<Usuario> {
+  const token = obtenerToken();
+  if (token === MODO_DEMO.tokenMarcador) {
+    return { ...PERFIL_DEMO, id, ...datos };
+  }
+  const respuesta = await solicitudApi<Usuario>(`/users/${id}`, {
+    metodo: "PATCH",
+    datos,
+  });
   return respuesta.datos;
 }

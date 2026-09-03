@@ -3,4 +3,5 @@
  */
 
 export * from "./autenticacion";
+export * from "./perfil";
 export * from "./entidades";

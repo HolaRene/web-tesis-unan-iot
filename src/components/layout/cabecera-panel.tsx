@@ -16,6 +16,7 @@ import { SelectorTema } from "@/components/layout/selector-tema";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -38,7 +39,7 @@ const titulosPorRuta: Record<string, string> = {
 export function CabeceraPanel() {
   const router = useRouter();
   const pathname = usePathname();
-  const { usuario, esDemo, cerrarSesion } = useSesion();
+  const { usuario, perfil, esDemo, cerrarSesion } = useSesion();
 
   const tituloActual = pathname.split("/")[1] ?? "panel";
   const titulo =
@@ -76,31 +77,44 @@ export function CabeceraPanel() {
               </Button>
             }
           />
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              {usuario?.email ?? "Sesión"}{" "}
-              {esDemo && <span className="text-muted-foreground">(demo)</span>}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              render={<Link href="/" className="w-full" />}
-            >
-              <Home className="size-4" aria-hidden />
-              Ir a la web pública
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              render={
-                <button
-                  type="button"
-                  className="w-full"
-                  onClick={manejarCerrarSesion}
-                />
-              }
-            >
-              <LogOut className="size-4" aria-hidden />
-              Cerrar sesión
-            </DropdownMenuItem>
+          <DropdownMenuContent align="end" className="w-60">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-medium">
+                    {perfil?.nombre ?? usuario?.email ?? "Sesión"}
+                  </span>
+                  {perfil && (
+                    <span className="truncate text-xs font-normal text-muted-foreground">
+                      {perfil.email}
+                    </span>
+                  )}
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem render={<Link href="/mi-perfil" className="w-full" />}>
+                <UserIcon className="size-4" aria-hidden />
+                Mi perfil
+              </DropdownMenuItem>
+              <DropdownMenuItem render={<Link href="/" className="w-full" />}>
+                <Home className="size-4" aria-hidden />
+                Ir a la web pública
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                render={
+                  <button
+                    type="button"
+                    className="w-full"
+                    onClick={manejarCerrarSesion}
+                  />
+                }
+              >
+                <LogOut className="size-4" aria-hidden />
+                Cerrar sesión
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
