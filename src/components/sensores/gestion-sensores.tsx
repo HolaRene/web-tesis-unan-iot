@@ -15,8 +15,6 @@ import { z } from "zod";
 import {
   AlertCircle,
   Loader2,
-  MoreHorizontal,
-  Pencil,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -43,12 +41,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { AccionesFila } from "@/components/compartidos/acciones-fila";
 import { useSesion } from "@/hooks/use-sesion";
 import {
   listarSensores,
@@ -207,30 +200,7 @@ function Acciones({
   onEditar: () => void;
   onBorrar: () => void;
 }) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button variant="ghost" size="icon" aria-label="Acciones">
-            <MoreHorizontal className="size-4" aria-hidden />
-          </Button>
-        }
-      />
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem render={<button type="button" onClick={onEditar} />}>
-          <Pencil className="size-4" aria-hidden />
-          Editar
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          variant="destructive"
-          render={<button type="button" onClick={onBorrar} />}
-        >
-          <Trash2 className="size-4" aria-hidden />
-          Eliminar
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+  return <AccionesFila alEditar={onEditar} alEliminar={onBorrar} />;
 }
 
 export function GestionSensores() {

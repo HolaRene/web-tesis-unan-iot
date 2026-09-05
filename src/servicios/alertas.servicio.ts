@@ -5,7 +5,6 @@
  */
 import { api } from "./api";
 import type { Alerta } from "@/tipos";
-
 /** Lista todas las alertas. */
 export async function listarAlertas(): Promise<Alerta[]> {
   const respuesta = await api.obtener<Alerta[]>("/alerts");
@@ -18,7 +17,15 @@ export async function obtenerAlerta(id: string): Promise<Alerta> {
   return respuesta.datos;
 }
 
-/** Actualiza una alerta (p.ej. reconocerla o resolverla). */
+/** Crea una alerta (si es necesario desde el frontend). */
+export async function crearAlerta(
+  datos: Omit<Alerta, "id" | "iniciada_en" | "reconocida_en" | "finalizada_en">
+): Promise<Alerta> {
+  const respuesta = await api.enviar<Alerta>("/alerts", datos, "POST");
+  return respuesta.datos;
+}
+
+/** Actualiza una alerta (reconocer, resolver, cambiar estado). */
 export async function actualizarAlerta(
   id: string,
   datos: Partial<Alerta>
@@ -30,4 +37,13 @@ export async function actualizarAlerta(
 /** Elimina una alerta por su id. */
 export async function eliminarAlerta(id: string): Promise<void> {
   await api.eliminar(`/alerts/${id}`);
+}
+
+// Helper para acciones comunes
+export async function reconocerAlerta(id: string): Promise<Alerta> {
+  return actualizarAlerta(id, { estado: "acknowledged" });
+}
+
+export async function resolverAlerta(id: string): Promise<Alerta> {
+  return actualizarAlerta(id, { estado: "resolved" });
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { PaginaEnConstruccion } from "@/components/compartidos/pagina-en-construccion";
+import { AlertCircle } from "lucide-react";
+import GestionMediciones from "@/components/mediciones/gestion-mediciones";
 
 export const metadata: Metadata = {
   title: "Mediciones",
@@ -8,14 +9,16 @@ export const metadata: Metadata = {
 
 export default function PaginaMediciones() {
   return (
-    <PaginaEnConstruccion
-      titulo="Mediciones"
-      descripcion="Consulta de mediciones con filtros por área, dispositivo, sensor, tipo de variable y rango de fechas."
-      pendientes={[
-        "Filtros combinados (área, dispositivo, sensor, variable, fechas).",
-        "Tabla de mediciones.",
-        "Gráfica histórica, mínimo, máximo, promedio y última lectura (Recharts).",
-      ]}
-    />
+     <div className="space-y-4">
+      <div className="flex items-start gap-2 rounded-2xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+        <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <p>
+          Mediciones registrados en la plataforma. Rol <strong>viewer</strong>{" "}
+          sólo consulta; <strong>usuario</strong> y <strong>admin</strong> pueden
+          crear, editar y eliminar.
+        </p>
+      </div>
+      <GestionMediciones />
+    </div>
   );
 }

@@ -1,9 +1,4 @@
-/**
- * Servicio de datos de Mediciones.
- *
- * Endpoint real del backend: /api/v1/measurements
- * El backend acepta filtros vía query string (p.ej. sensor_id, limite).
- */
+// src/servicios/medicionService.ts
 import { api } from "./api";
 import type { Medicion } from "@/tipos";
 
@@ -18,7 +13,7 @@ export interface FiltrosMediciones {
   limite?: number;
 }
 
-/** Lista mediciones aplicando filtros opcionales. */
+/** Lista todas las mediciones con filtros opcionales. */
 export async function listarMediciones(
   filtros: FiltrosMediciones = {}
 ): Promise<Medicion[]> {
@@ -27,6 +22,38 @@ export async function listarMediciones(
     `/measurements${query ? `?${query}` : ""}`
   );
   return respuesta.datos;
+}
+
+/** Obtiene una medición por su id. */
+export async function obtenerMedicion(id: number | string): Promise<Medicion> {
+  const respuesta = await api.obtener<Medicion>(`/measurements/${id}`);
+  return respuesta.datos;
+}
+
+/** Crea una nueva medición. */
+export async function crearMedicion(
+  datos: Omit<Medicion, "id" | "registrado_en">
+): Promise<Medicion> {
+  const respuesta = await api.enviar<Medicion>("/measurements", datos, "POST");
+  return respuesta.datos;
+}
+
+/** Actualiza una medición (si lo necesitas). */
+export async function actualizarMedicion(
+  id: number | string,
+  datos: Partial<Medicion>
+): Promise<Medicion> {
+  const respuesta = await api.enviar<Medicion>(
+    `/measurements/${id}`,
+    datos,
+    "PATCH"
+  );
+  return respuesta.datos;
+}
+
+/** Elimina una medición por su id. */
+export async function eliminarMedicion(id: number | string): Promise<void> {
+  await api.eliminar(`/measurements/${id}`);
 }
 
 /** Serializa los filtros a query string robusto ante valores undefined. */

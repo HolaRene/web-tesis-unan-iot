@@ -17,8 +17,6 @@ import { useForm } from "react-hook-form";
 import {
   AlertCircle,
   Loader2,
-  MoreHorizontal,
-  Pencil,
   Plus,
   Trash2,
   UserRound,
@@ -46,12 +44,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { AccionesFila } from "@/components/compartidos/acciones-fila";
 import { esquemaArea, type DatosAreaFormulario } from "@/esquemas";
 import { useSesion } from "@/hooks/use-sesion";
 import {
@@ -189,28 +182,10 @@ interface AccionesProps {
 
 function AreaAcciones({ area, onEditar, onBorrar }: AccionesProps) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button variant="ghost" size="icon" aria-label="Acciones">
-            <MoreHorizontal className="size-4" aria-hidden />
-          </Button>
-        }
-      />
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem render={<button type="button" onClick={() => onEditar(area)} />}>
-          <Pencil className="size-4" aria-hidden />
-          Editar
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          variant="destructive"
-          render={<button type="button" onClick={() => onBorrar(area)} />}
-        >
-          <Trash2 className="size-4" aria-hidden />
-          Eliminar
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <AccionesFila
+      alEditar={() => onEditar(area)}
+      alEliminar={() => onBorrar(area)}
+    />
   );
 }
 
@@ -301,6 +276,7 @@ export function GestionAreas() {
     <div className="space-y-4">
       {/* Crear/editar modal re-evaluado en cada apertura */}
       <FormularioArea
+        key={abrir ? editar?.id ?? "nuevo" : "cerrado"}
         abierto={abrir}
         area={editar}
         enviando={mutCrear.isPending || mutActualizar.isPending}
