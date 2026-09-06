@@ -6,10 +6,10 @@
  * - Actuadores: lista y permite crear actuadores de ese dispositivo.
  * Autenticado por JWT; crear/editar = usuario/admin.
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, RadioTower } from "lucide-react";
+import { Plus, RadioTower, Loader2 } from "lucide-react";
 
 import { obtenerDispositivo } from "@/servicios/dispositivos.servicio";
 import { listarSensores } from "@/servicios/sensores.servicio";
@@ -19,6 +19,8 @@ import type { Actuador } from "@/tipos";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -31,6 +33,13 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function DetalleDispositivo({ id }: { id: string }) {
   const queryClient = useQueryClient();
@@ -181,29 +190,43 @@ function ResumenActuadores({
   puedeEscribir: boolean;
   onCreado: () => void;
 }) {
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [formulario, setFormulario] = useState({
+    nombre: "",
+    codigo: "",
+    tipo: "digital_out",
+  });
+  const [errorLocal, setErrorLocal] = useState<Error | null>(null);
+
+  async function guardarActuador() {
+    if (!formulario.nombre.trim() || !formulario.codigo.trim()) return;
+    setGuardando(true);
+    setErrorLocal(null);
+    try {
+      await crearActuador({
+        dispositivo_id: dispositivoId,
+        nombre: formulario.nombre.trim(),
+        codigo: formulario.codigo.trim(),
+        tipo: formulario.tipo.trim(),
+        activo: true,
+      });
+      onCreado();
+      setModalAbierto(false);
+      setFormulario({ nombre: "", codigo: "", tipo: "digital_out" });
+    } catch (e) {
+      setErrorLocal(e instanceof Error ? e : new Error(String(e)));
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="text-lg">Actuadores del dispositivo</CardTitle>
         {puedeEscribir && (
-          <Button
-            size="sm"
-            onClick={() => {
-              // manejar en un modal o simple prompt rápido. Mantenemos básico:
-              const nombre = window.prompt("Nombre del actuador", "Nuevo actuador");
-              const codigo = window.prompt("Código (ej: RELE-01)");
-              const tipo = window.prompt("Tipo (ej: digital_out)", "digital_out");
-              if (nombre && codigo && tipo) {
-                void crearActuadorLocal({
-                  dispositivoId,
-                  nombre,
-                  codigo,
-                  tipo,
-                  onCreado,
-                });
-              }
-            }}
-          >
+          <Button size="sm" onClick={() => setModalAbierto(true)}>
             <Plus className="size-4" aria-hidden /> Nuevo actuador
           </Button>
         )}
@@ -253,33 +276,69 @@ function ResumenActuadores({
           </Table>
         )}
       </CardContent>
+
+      {/* Diálogo para crear actuador */}
+      <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nuevo actuador</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="act-nombre">Nombre</Label>
+              <Input
+                id="act-nombre"
+                placeholder="Ej. Relé ventilación"
+                value={formulario.nombre}
+                onChange={(e) =>
+                  setFormulario((p) => ({ ...p, nombre: e.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="act-codigo">Código</Label>
+              <Input
+                id="act-codigo"
+                placeholder="Ej. RELE-Q2"
+                value={formulario.codigo}
+                onChange={(e) =>
+                  setFormulario((p) => ({ ...p, codigo: e.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="act-tipo">Tipo</Label>
+              <Input
+                id="act-tipo"
+                placeholder="digital_out, relay, buzzer…"
+                value={formulario.tipo}
+                onChange={(e) =>
+                  setFormulario((p) => ({ ...p, tipo: e.target.value }))
+                }
+              />
+            </div>
+            {errorLocal && (
+              <p className="text-sm text-destructive">{errorLocal.message}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setModalAbierto(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" onClick={guardarActuador} disabled={guardando}>
+              {guardando ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : null}
+              Crear actuador
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
 
-async function crearActuadorLocal({
-  dispositivoId,
-  nombre,
-  codigo,
-  tipo,
-  onCreado,
-}: {
-  dispositivoId: string;
-  nombre: string;
-  codigo: string;
-  tipo: string;
-  onCreado: () => void;
-}) {
-  try {
-    await crearActuador({
-      dispositivo_id: dispositivoId,
-      nombre,
-      codigo,
-      tipo,
-      activo: true,
-    });
-    onCreado();
-  } catch (e) {
-    window.alert(e instanceof Error ? e.message : "No se pudo crear el actuador");
-  }
-}

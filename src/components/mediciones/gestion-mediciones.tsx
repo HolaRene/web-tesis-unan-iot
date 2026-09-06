@@ -10,7 +10,9 @@ import {
   useListarMediciones,
   useMutacionesMediciones,
 } from "@/hooks/useMediciones";
+import { useQuery } from "@tanstack/react-query";
 import { useSesion } from "@/hooks/use-sesion";
+import { listarSensores } from "@/servicios/sensores.servicio";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +38,18 @@ const selectClases =
 export default function GestionMediciones() {
   const { usuario } = useSesion();
   const puedeEscribir = usuario?.rol === "usuario" || usuario?.rol === "admin";
+
+  const sensoresQuery = useQuery({
+    queryKey: ["sensores"],
+    queryFn: listarSensores,
+  });
+  const sensores = sensoresQuery.data ?? [];
+  const sensorPorId = new Map(sensores.map((s) => [s.id, s]));
+  const labelSensor = (id: string) => {
+    const s = sensorPorId.get(id);
+    if (!s) return id;
+    return `${s.codigo} · ${s.nombre}`;
+  };
 
   const [filtros, setFiltros] = useState({
     sensor_id: "",
@@ -133,7 +147,9 @@ export default function GestionMediciones() {
               <TableBody>
                 {mediciones?.map((m) => (
                   <TableRow key={m.id}>
-                    <TableCell className="font-medium">{m.sensor_id}</TableCell>
+                    <TableCell className="font-medium">
+                      {labelSensor(m.sensor_id)}
+                    </TableCell>
                     <TableCell>{valorVisible(m)}</TableCell>
                     <TableCell>
                       <QualityBadge calidad={m.calidad} />
@@ -179,15 +195,21 @@ export default function GestionMediciones() {
           <CardContent>
             <form onSubmit={registro} className="flex flex-wrap items-end gap-3" noValidate>
               <div className="grid gap-1.5">
-                <Label htmlFor="med-sensor">ID del sensor</Label>
-                <Input
+                <Label htmlFor="med-sensor">Sensor</Label>
+                <select
                   id="med-sensor"
                   required
-                  placeholder="UUID del sensor"
-                  className="w-64"
+                  className="h-9 w-64 rounded-xl border border-border bg-card px-3 text-sm text-foreground"
                   value={nueva.sensor_id}
                   onChange={(e) => setNueva({ ...nueva, sensor_id: e.target.value })}
-                />
+                >
+                  <option value="">Selecciona un sensor</option>
+                  {sensores.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.codigo} · {s.nombre}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="med-valor">Valor numérico</Label>
