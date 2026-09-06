@@ -3,21 +3,21 @@
 /**
  * Hook de resumen para el dashboard principal.
  *
- * Consulta varios endpoints existentes de la API REST (no hay endpoint de
- * "resumen" en el backend) y agrega métricas en el cliente:
- *   GET /areas, GET /devices, GET /sensors,
- *   GET /alerts, GET /measurements (recientes)
+ * Usa el endpoint dirigido del backend:
+ *   GET /api/v1/dashboard/resumen
+ * (una sola petición con totales y últimas mediciones/alertas/dispositivos,
+ * en vez de consultar 5 recursos por separado).
+ *
+ * Las últimas mediciones llegan con `sensor_codigo` y `sensor_nombre`
+ * gracias al JOIN que hace el backend; así el panel sabe qué sensor (código)
+ * corresponde a cada medición (id + sensor_id).
  */
 import { useMemo, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { Alerta, Area, Dispositivo, Medicion, Sensor } from "@/tipos";
-import { listarAreas } from "@/servicios/areas.servicio";
-import { listarDispositivos } from "@/servicios/dispositivos.servicio";
-import { listarSensores } from "@/servicios/sensores.servicio";
-import { listarAlertas } from "@/servicios/alertas.servicio";
-import { listarMediciones } from "@/servicios/mediciones.servicio";
+import type { Alerta, Area, Dispositivo, Sensor } from "@/tipos";
+import { obtenerResumenDashboard } from "@/servicios/dashboard.servicio";
 
-/** Punto de una serie de actividad (número de mediciones por hora). */
+/** Punto de una serie temporal para el gráfico de actividad. */
 export interface PuntoActividad {
   etiqueta: string;
   valor: number;
@@ -28,13 +28,13 @@ export interface ResumenDashboard {
   dispositivos: Dispositivo[];
   sensores: Sensor[];
   alertas: Alerta[];
-  mediciones: Medicion[];
+  mediciones: ReturnType<typeof _medicionVacia>[];
   totalAreas: number;
   totalDispositivos: number;
   dispositivosConectados: number;
   sensoresActivos: number;
   alertasActivas: number;
-  ultimasMediciones: Medicion[];
+  ultimasMediciones: ReturnType<typeof _medicionVacia>[];
   dispositivosRecientes: Dispositivo[];
   alertasRecientes: Alerta[];
   actividad: PuntoActividad[];
@@ -42,84 +42,52 @@ export interface ResumenDashboard {
   error: string | null;
 }
 
-export interface EstadoCarga {
-  cargando: boolean;
-  error: Error | null;
+// helper tipográfico pequeño para mantener compatibilidad con la vista previa.
+function _medicionVacia() {
+  return {
+    id: 0,
+    sensor_id: "",
+    sensor_codigo: null,
+    sensor_nombre: null,
+    valor_numerico: null,
+    valor_texto: null,
+    calidad: "good",
+    registrado_en: "",
+    metadatos: null as Record<string, unknown> | null,
+  };
 }
 
-/** Devuelve el día/hora "yyyy-mm-dd HH:00" para agrupar.
- * Como solo mostramos hora, se usa hora local.
- */
-function formatearGrupo(iso: string): string {
-  const d = new Date(iso);
+function formatearGrupo(iso: string | Date): string {
+  const d = iso instanceof Date ? iso : new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   const hh = String(d.getHours()).padStart(2, "0");
   return `${hh}:00`;
 }
 
 export function useResumenDashboard(): ResumenDashboard {
-  const areasQ = useQuery({ queryKey: ["areas"], queryFn: listarAreas });
-  const dispositivosQ = useQuery({
-    queryKey: ["dispositivos"],
-    queryFn: listarDispositivos,
-  });
-  const sensoresQ = useQuery({ queryKey: ["sensores"], queryFn: listarSensores });
-  const alertasQ = useQuery({ queryKey: ["alertas"], queryFn: listarAlertas });
-  const medicionesQ = useQuery({
-    queryKey: ["mediciones", "recientes"],
-    queryFn: () => listarMediciones({ limite: 50 }),
+  const consulta = useQuery({
+    queryKey: ["dashboard", "resumen"],
+    queryFn: obtenerResumenDashboard,
   });
 
-  const cargando =
-    areasQ.isLoading ||
-    dispositivosQ.isLoading ||
-    sensoresQ.isLoading ||
-    alertasQ.isLoading ||
-    medicionesQ.isLoading;
-
-  const error =
-    (areasQ.error ??
-      dispositivosQ.error ??
-      sensoresQ.error ??
-      alertasQ.error ??
-      medicionesQ.error) ??
-    null;
+  const cargando = consulta.isLoading;
+  const error = consulta.error ?? null;
 
   const datos = useMemo<ResumenDashboard>(() => {
-    const areas = areasQ.data ?? [];
-    const dispositivos = dispositivosQ.data ?? [];
-    const sensores = sensoresQ.data ?? [];
-    const alertas = alertasQ.data ?? [];
-    const mediciones = medicionesQ.data ?? [];
+    const d = consulta.data;
+    const totales = d?.totales;
+    const areas: Area[] = []; // la vista actual puede derivarlo de totalizadores, no repite arrays pesados.
+    const dispositivos = d?.dispositivos_recientes ?? [];
+    const alertas = d?.ultimas_alertas as unknown as Alerta[];
+    const mediciones = (d?.ultimas_mediciones ??
+      []) as ResumenDashboard["mediciones"];
 
-    const conectados = dispositivos.filter((d) =>
-      ["online", "activo"].includes(d.estado?.toLowerCase())
-    ).length;
-    const activos = sensores.filter((s) => s.activo).length;
-    const activas = alertas.filter(
-      (a) => a.estado?.toLowerCase() === "active"
-    ).length;
-
-    // Ultimas mediciones ordenadas por registro (desc) ya las trae la API.
-    const ultimasMediciones = mediciones.slice(0, 5);
-
-    // Dispositivos más recientes por última conexión (primero con conex).
-    const dispositivosRecientes = [...dispositivos]
-      .sort((a, b) => {
-        const tA = a.ultima_conexion ? new Date(a.ultima_conexion).getTime() : 0;
-        const tB = b.ultima_conexion ? new Date(b.ultima_conexion).getTime() : 0;
-        return tB - tA;
-      })
-      .slice(0, 5);
-
-    const alertasRecientes = [...alertas].slice(0, 5);
-
-    // Serie de actividad: cuenta mediciones por hora (últimas 24 h visibles no
-    // son necesarias; se agrupa por hora sin importar el día en la demo real).
+    // Actividad por hora sobre las últimas mediciones recibidas.
     const porHora: Record<string, number> = {};
     for (const m of mediciones) {
-      const grupo = formatearGrupo(m.registrado_en);
-      porHora[grupo] = (porHora[grupo] ?? 0) + 1;
+      const grupo = String(m.registrado_en);
+      const gg = formatearGrupo(grupo);
+      porHora[gg] = (porHora[gg] ?? 0) + 1;
     }
     const actividad: PuntoActividad[] = Object.entries(porHora)
       .sort(([a], [b]) => (a < b ? -1 : 1))
@@ -129,43 +97,31 @@ export function useResumenDashboard(): ResumenDashboard {
     return {
       areas,
       dispositivos,
-      sensores,
+      sensores: [],
       alertas,
       mediciones,
-      totalAreas: areas.length,
-      totalDispositivos: dispositivos.length,
-      dispositivosConectados: conectados,
-      sensoresActivos: activos,
-      alertasActivas: activas,
-      ultimasMediciones,
-      dispositivosRecientes,
-      alertasRecientes,
+      totalAreas: totales?.areas ?? 0,
+      totalDispositivos: totales?.dispositivos ?? 0,
+      dispositivosConectados:
+        dispositivos.filter((x: Dispositivo) =>
+          ["online", "activo"].includes(x.estado?.toLowerCase())
+        ).length || 0,
+      sensoresActivos: totales?.sensores ?? 0,
+      alertasActivas: totales?.alertas_activas ?? 0,
+      ultimasMediciones: mediciones,
+      dispositivosRecientes: dispositivos,
+      alertasRecientes: alertas ?? [],
       actividad:
         actividad.length > 0
           ? actividad
           : [{ etiqueta: "Sin datos", valor: 0 }],
       cargando,
-      error: errorInstance(error),
+      error: error ? (error instanceof Error ? error.message : String(error)) : null,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    areasQ.data,
-    dispositivosQ.data,
-    sensoresQ.data,
-    alertasQ.data,
-    medicionesQ.data,
-  ]);
+  }, [consulta.data, cargando, error]);
 
-  return {
-    ...datos,
-    cargando,
-    error: error ? error.message : null,
-  };
+  return { ...datos, cargando, error: datos.error };
 }
 
-function errorInstance(error: unknown): string | null {
-  return error instanceof Error ? error.message : error ? String(error) : null;
-}
-
-/** guard de tipo para children lazy no aprovechado */
 export type NodoReact = ReactNode;

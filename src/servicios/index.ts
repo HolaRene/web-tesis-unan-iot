@@ -11,3 +11,6 @@ export * from "./mediciones.servicio";
 export * from "./alertas.servicio";
 export * from "./camaras.servicio";
 export * from "./integraciones.servicio";
+export * from "./claves-api.servicio";
+export * from "./dashboard.servicio";
+export * from "./actuadores.servicio";

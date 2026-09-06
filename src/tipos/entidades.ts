@@ -136,3 +136,98 @@ export interface Integracion {
   configuracion: Record<string, unknown> | null;
   creado_en: string;
 }
+
+/**
+ * API Key por usuario (integración IoT: Node-RED, scripts, gateways).
+ * Endpoints: GET/POST/DELETE /api/v1/claves-api
+ * Nota: la API NUNCA devuelve la clave completa después de crearla; solo
+ * se muestra una única vez en la creación (`claveCompleta`).
+ */
+export interface ClaveApi {
+  id: string;
+  usuario_id: string;
+  nombre: string;
+  prefijo: string;
+  activa: boolean;
+  /** Permisos por clave, ej. { "mediciones:crear": true } */
+  permisos: Record<string, boolean> | null;
+  ultimo_uso: string | null;
+  expira_en: string | null;
+  creado_en: string;
+}
+
+/** Permisos reconocidos por la API para las claves. */
+export const PERMISOS_CLAVE_API = [
+  "mediciones:crear",
+  "comandos:enviar",
+  "estado:actualizar",
+] as const;
+
+export type PermisoClaveApi = (typeof PERMISOS_CLAVE_API)[number];
+
+/** Respuesta de la creación de una API Key (clave completa visible 1 vez). */
+export interface ClaveApiCreada {
+  clave: ClaveApi;
+  /** Clave completa, visible una sola vez al crearla. */
+  claveCompleta: string;
+  /** Prefijo legible de la clave. */
+  prefijo: string;
+}
+
+/** Totales globales del dashboard. */
+export interface TotalesDashboard {
+  areas: number;
+  dispositivos: number;
+  sensores: number;
+  mediciones: number;
+  alertas_activas: number;
+}
+
+/**
+ * Medición con la relación legible al sensor (incluye el id y el código),
+ * para saber a qué medición corresponde cada dato.
+ */
+export interface MedicionConSensor extends Medicion {
+  sensor_codigo: string | null;
+  sensor_nombre: string | null;
+  unidad: string | null;
+  dispositivo_nombre: string | null;
+}
+
+export interface AlertaResumen {
+  id: string;
+  severidad: string | null;
+  mensaje: string | null;
+  estado: string;
+  iniciada_en: string;
+  sensor_codigo: string | null;
+}
+
+/** Respuesta de GET /api/v1/dashboard/resumen. */
+export interface ResumenDirectorDashboard {
+  totales: TotalesDashboard;
+  ultimas_mediciones: MedicionConSensor[];
+  dispositivos_recientes: Dispositivo[];
+  ultimas_alertas: AlertaResumen[];
+}
+
+/**
+ * Actuador (salida digital, relé, etc.) vinculado a un dispositivo.
+ * Endpoint: GET/POST/PATCH/DELETE /api/v1/actuadores
+ */
+export interface Actuador {
+  id: string;
+  dispositivo_id: string;
+  nombre: string;
+  codigo: string;
+  tipo: string;
+  estado_actual: string | null;
+  activo: boolean;
+  configuracion: Record<string, unknown> | null;
+  creado_en: string;
+  dispositivo_nombre?: string | null;
+  area_nombre?: string | null;
+}
+
+
+

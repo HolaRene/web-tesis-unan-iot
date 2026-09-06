@@ -10,7 +10,7 @@
  * Los POST/PATCH/DELETE requieren rol `usuario` o `admin`; un `viewer` ve la
  * lista en modo lectura.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -86,6 +86,20 @@ function FormularioArea({
       ubicacion: area?.ubicacion ?? "",
     },
   });
+
+  // Re-sincroniza el formulario cuando cambia el área a editar o al abrir,
+  // garantizando que lleguen TODOS los datos de la fila (y no queden viejos).
+  useEffect(() => {
+    if (abierto) {
+      reset({
+        nombre: area?.nombre ?? "",
+        tipo: area?.tipo ?? "",
+        descripcion: area?.descripcion ?? "",
+        ubicacion: area?.ubicacion ?? "",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [area, abierto]);
 
   return (
     <Dialog

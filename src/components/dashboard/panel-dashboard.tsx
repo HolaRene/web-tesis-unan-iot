@@ -183,7 +183,7 @@ export function PanelDashboard() {
                       {resumen.ultimasMediciones.map((m) => (
                         <TableRow key={m.id}>
                           <TableCell className="font-medium">
-                            {m.sensor_id}
+                            {renderSensorDeMedicion(m)}
                           </TableCell>
                           <TableCell>
                             {formatearValor(m.valor_numerico)}
@@ -309,3 +309,17 @@ export function PanelDashboard() {
     </div>
   );
 }
+
+/** Muestra el sensor legible (código · nombre) en lugar de solo el UUID interno. */
+function renderSensorDeMedicion(m: {
+  sensor_codigo?: string | null;
+  sensor_nombre?: string | null;
+  sensor_id?: string;
+}) {
+  if (m.sensor_codigo && m.sensor_nombre) return `${m.sensor_codigo} · ${m.sensor_nombre}`;
+  if (m.sensor_codigo) return m.sensor_codigo;
+  if (m.sensor_nombre) return m.sensor_nombre;
+  if (m.sensor_id) return m.sensor_id;
+  return "Sensor";
+}
+

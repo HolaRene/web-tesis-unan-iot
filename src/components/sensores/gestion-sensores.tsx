@@ -7,7 +7,7 @@
  *   GET /sensors, POST /sensors, PATCH /sensors/:id, DELETE /sensors/:id
  * Crear/editar/eliminar exige rol `usuario` o `admin` (`viewer` sólo lee).
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -49,9 +49,13 @@ import {
   actualizarSensor,
   eliminarSensor,
 } from "@/servicios/sensores.servicio";
-import type { Sensor } from "@/tipos";
+import { listarDispositivos } from "@/servicios/dispositivos.servicio";
+import { listarTiposVariable } from "@/servicios/tipos-variable.servicio";
+import type { Sensor, Dispositivo, TipoVariable } from "@/tipos";
 
 const esquemaFormSensor = z.object({
+  dispositivo_id: z.string().optional().nullable(),
+  tipo_variable_id: z.string().optional().nullable(),
   nombre: z.string().trim().min(1, "El nombre es obligatorio"),
   codigo: z.string().trim().min(1, "El código es obligatorio"),
   fabricante: z.string().trim().optional().nullable(),
@@ -66,6 +70,8 @@ type DatosFormSensor = z.infer<typeof esquemaFormSensor>;
 function FormularioSensor({
   abierto,
   sensor,
+  dispositivos,
+  tipos,
   enviando,
   error,
   onOpenChange,
@@ -73,6 +79,8 @@ function FormularioSensor({
 }: {
   abierto: boolean;
   sensor: Sensor | null;
+  dispositivos: Dispositivo[];
+  tipos: TipoVariable[];
   enviando: boolean;
   error: string | null;
   onOpenChange: (o: boolean) => void;
@@ -85,6 +93,8 @@ function FormularioSensor({
   } = useForm<DatosFormSensor>({
     resolver: zodResolver(esquemaFormSensor),
     defaultValues: {
+      dispositivo_id: sensor?.dispositivo_id ?? "",
+      tipo_variable_id: sensor?.tipo_variable_id ?? "",
       nombre: sensor?.nombre ?? "",
       codigo: sensor?.codigo ?? "",
       fabricante: sensor?.fabricante ?? "",
@@ -110,6 +120,40 @@ function FormularioSensor({
           className="space-y-4"
           noValidate
         >
+          {/* Conectar con dispositivo y tipo de variable */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="sen-dispositivo">Dispositivo</Label>
+              <select
+                id="sen-dispositivo"
+                className="h-9 w-full rounded-2xl border bg-background px-3 text-sm"
+                {...register("dispositivo_id")}
+              >
+                <option value="">Sin dispositivo</option>
+                {dispositivos.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="sen-tipo">Tipo de variable</Label>
+              <select
+                id="sen-tipo"
+                className="h-9 w-full rounded-2xl border bg-background px-3 text-sm"
+                {...register("tipo_variable_id")}
+              >
+                <option value="">Sin tipo</option>
+                {tipos.map((tv) => (
+                  <option key={tv.id} value={tv.id}>
+                    {tv.nombre} ({tv.tipo_dato})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="sen-nombre">Nombre</Label>
@@ -209,6 +253,13 @@ export function GestionSensores() {
   const puedeEscribir = usuario?.rol === "usuario" || usuario?.rol === "admin";
 
   const sensores = useQuery({ queryKey: ["sensores"], queryFn: listarSensores });
+  const dispQuery = useQuery({ queryKey: ["dispositivos"], queryFn: listarDispositivos });
+  const tiposQuery = useQuery({
+    queryKey: ["tipos-variable"],
+    queryFn: listarTiposVariable,
+  });
+  const dispositivos = dispQuery.data ?? [];
+  const tipos = tiposQuery.data ?? [];
 
   const mut = {
     crear: useMutation({
@@ -234,6 +285,8 @@ export function GestionSensores() {
   async function guardar(datos: DatosFormSensor) {
     setErrorOp(null);
     const registro = {
+      dispositivo_id: datos.dispositivo_id || null,
+      tipo_variable_id: datos.tipo_variable_id || null,
       nombre: datos.nombre,
       codigo: datos.codigo,
       fabricante: datos.fabricante || null,
@@ -272,6 +325,8 @@ export function GestionSensores() {
         key={abrir ? editar?.id ?? "nuevo" : "cerrado"}
         abierto={abrir}
         sensor={editar}
+        dispositivos={dispositivos}
+        tipos={tipos}
         enviando={mut.crear.isPending || mut.actualizar.isPending}
         error={errorOp}
         onOpenChange={(val) => {

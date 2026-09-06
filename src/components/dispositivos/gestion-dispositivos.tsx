@@ -10,7 +10,8 @@
  *   DELETE /devices/:id       -> eliminar
  * Crear/editar/eliminar exige rol `usuario` o `admin` (`viewer` lee nada más).
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -119,8 +120,27 @@ function FormularioDispositivo({
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useCampoForm(dispositivo);
+
+  // Re-sincroniza TODOS los campos al abrir o al cambiar el dispositivo a editar.
+  useEffect(() => {
+    if (abierto) {
+      reset({
+        area_id: dispositivo?.area_id ?? "",
+        nombre: dispositivo?.nombre ?? "",
+        tipo: dispositivo?.tipo ?? "",
+        protocolo: dispositivo?.protocolo ?? "",
+        direccion_ip: dispositivo?.direccion_ip ?? "",
+        fabricante: dispositivo?.fabricante ?? "",
+        modelo: dispositivo?.modelo ?? "",
+        identificador: dispositivo?.identificador ?? "",
+        estado: dispositivo?.estado ?? "online",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispositivo, abierto]);
 
   return (
     <Dialog
@@ -397,7 +417,14 @@ export function GestionDispositivos() {
               <TableBody>
                 {filas.map((d) => (
                   <TableRow key={d.id}>
-                    <TableCell className="font-medium">{d.nombre}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/dispositivos/${d.id}`}
+                        className="font-medium hover:underline"
+                      >
+                        {d.nombre}
+                      </Link>
+                    </TableCell>
                     <TableCell>{d.tipo}</TableCell>
                     <TableCell>{d.protocolo ?? "—"}</TableCell>
                     <TableCell>{d.direccion_ip ?? "—"}</TableCell>
