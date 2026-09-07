@@ -229,5 +229,77 @@ export interface Actuador {
   area_nombre?: string | null;
 }
 
+/**
+ * Canal: magnitud concreta de un sensor físico.
+ * GET/POST/PATCH /api/v1/canales
+ */
+export interface Canal {
+  id: string;
+  sensor_id: string | null;
+  tipo_variable_id: string | null;
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+  unidad: string | null;
+  rango_min: number | null;
+  rango_max: number | null;
+  precision_valor: number | null;
+  activo: boolean;
+
+  dispositivo_id?: string | null;
+  dispositivo_nombre?: string | null;
+  dispositivo_identificador?: string | null;
+  area_nombre?: string | null;
+  tipo_nombre?: string | null;
+  tipo_codigo?: string | null;
+  tipo_dato?: string | null;
+  tipo_unidad?: string | null;
+
+  ultima_medicion_id?: number | null;
+  ultimo_valor_numerico?: number | null;
+  ultimo_valor_texto?: string | null;
+  ultimo_valor_booleano?: boolean | null;
+  ultimo_registrado_en?: string | null;
+  cantidad_mediciones?: number | null;
+  alerta_activa?: boolean;
+}
+
+export interface ReglaAlerta {
+  id: string;
+  canal_id: string;
+  nombre: string;
+  descripcion: string | null;
+  operador: string;
+  valor_referencia_numerico: number | null;
+  valor_referencia_texto: string | null;
+  valor_referencia_booleano: boolean | null;
+  valor_min: number | null;
+  valor_max: number | null;
+  severidad: 'info' | 'warning' | 'critical';
+  mensaje: string | null;
+  activa: boolean;
+  retardo_segundos: number | null;
+  canal_codigo?: string | null;
+  tipo_dato?: string | null;
+  dispositivo_identificador?: string | null;
+  area_nombre?: string | null;
+}
+
+export interface IotAlerta {
+  id: string;
+  canal_id?: string | null;
+  regla_id?: string | null;
+  sensor_id?: string | null;
+  medicion_id?: number | null;
+  severidad: string;
+  mensaje: string | null;
+  estado: string;
+  iniciada_en: string;
+  reconocida_en: string | null;
+  finalizada_en: string | null;
+  valor_disparador_numerico?: number | null;
+  valor_disparador_texto?: string | null;
+}
+
 
 
