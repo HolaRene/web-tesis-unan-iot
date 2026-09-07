@@ -6,11 +6,13 @@
  * URLs del backend: GET /alerts, PATCH /alerts/:id, DELETE /alerts/:id
  */
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   useListarAlertas,
   useMutacionesAlertas,
 } from "@/hooks/useAlertas";
 import { useSesion } from "@/hooks/use-sesion";
+import { listarSensores } from "@/servicios/sensores.servicio";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +46,17 @@ export default function GestionAlertas() {
 
   const { data: alertas, isLoading, error } = useListarAlertas();
   const { reconocer, resolver, eliminar } = useMutacionesAlertas();
+
+  // Etiqueta legible del sensor (en lugar del UUID).
+  const sensoresQ = useQuery({ queryKey: ["sensores-labels"], queryFn: listarSensores });
+  const sensorById = new Map((sensoresQ.data ?? []).map((s) => [s.id, s]));
+  const etiquetaSensor = (id: string | null) =>
+    id
+      ? (() => {
+          const s = sensorById.get(id);
+          return s ? `${s.codigo} · ${s.nombre}` : id;
+        })()
+      : "—";
 
   const filtradas = (alertas ?? []).filter((a) => {
     if (filtroEstado !== "todos" && a.estado !== filtroEstado) return false;
@@ -140,7 +153,7 @@ export default function GestionAlertas() {
                 {filtradas.map((a) => (
                   <TableRow key={a.id}>
                     <TableCell className="font-medium">
-                      {a.sensor_id ?? "—"}
+                      {etiquetaSensor(a.sensor_id)}
                     </TableCell>
                     <TableCell>
                       <span className="line-clamp-1 max-w-md">

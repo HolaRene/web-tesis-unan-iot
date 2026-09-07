@@ -147,7 +147,8 @@ function FormularioSensor({
                 <option value="">Sin tipo</option>
                 {tipos.map((tv) => (
                   <option key={tv.id} value={tv.id}>
-                    {tv.nombre} ({tv.tipo_dato})
+                    {tv.nombre} ({tv.tipo_dato}
+                    {tv.unidad_default ? ` · ${tv.unidad_default}` : " · sin unidad"})
                   </option>
                 ))}
               </select>
@@ -292,6 +293,9 @@ export function GestionSensores() {
       fabricante: datos.fabricante || null,
       modelo: datos.modelo || null,
       unidad: datos.unidad || null,
+      rango_min: datos.rango_min ? String(datos.rango_min) : null,
+      rango_max: datos.rango_max ? String(datos.rango_max) : null,
+      precision: datos.precision ? String(datos.precision) : null,
       activo: true,
     };
     try {
@@ -356,7 +360,7 @@ export function GestionSensores() {
               }}
             >
               <Plus className="size-4" aria-hidden />
-              Nuevo sensor
+              Conectar sensor nuevo
             </Button>
           )}
         </CardHeader>

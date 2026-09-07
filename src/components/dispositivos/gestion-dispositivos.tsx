@@ -174,6 +174,15 @@ function FormularioDispositivo({
           </div>
 
           <div className="grid gap-2">
+            <Label htmlFor="disp-identificador">Identificador (para integración/NIR)</Label>
+            <Input
+              id="disp-identificador"
+              placeholder="ESP32-Q2"
+              {...register("identificador")}
+            />
+          </div>
+
+          <div className="grid gap-2">
             <Label htmlFor="disp-tipo">Tipo</Label>
             <Input
               id="disp-tipo"

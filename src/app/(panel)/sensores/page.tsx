@@ -1,24 +1,31 @@
 import type { Metadata } from "next";
-import { AlertCircle } from "lucide-react";
+import { MosaicoSensores } from "@/components/sensores/mosaico-sensores";
 import { GestionSensores } from "@/components/sensores/gestion-sensores";
 
 export const metadata: Metadata = {
   title: "Sensores",
-  description: "Gestión de sensores y variables medidas.",
+  description: "Supervisión de sensores y últimas mediciones registradas.",
 };
 
 export default function PaginaSensores() {
   return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-2 rounded-2xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-        <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
-        <p>
-          Sensores registrados en la plataforma. Rol <strong>viewer</strong>{" "}
-          sólo consulta; <strong>usuario</strong> y <strong>admin</strong> pueden
-          crear, editar y eliminar sensores.
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Sensores</h1>
+        <p className="text-sm text-muted-foreground">
+          Supervisión de sensores y últimas mediciones registradas.
         </p>
       </div>
-      <GestionSensores />
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Estado actual</h2>
+        <MosaicoSensores />
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Gestión (alta / edición)</h2>
+        <GestionSensores />
+      </section>
     </div>
   );
 }

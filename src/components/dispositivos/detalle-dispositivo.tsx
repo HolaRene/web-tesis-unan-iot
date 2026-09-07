@@ -89,6 +89,7 @@ export function DetalleDispositivo({ id }: { id: string }) {
           )}
           {dispositivo && (
             <p className="text-sm text-muted-foreground">
+              Identificador: <strong>{dispositivo.identificador ?? "—"}</strong> ·{" "}
               {dispositivo.tipo} · {dispositivo.protocolo ?? "sin protocolo"} ·{" "}
               {dispositivo.direccion_ip ?? "sin IP"}
             </p>

@@ -1,24 +1,21 @@
 import type { Metadata } from "next";
-import { AlertCircle } from "lucide-react";
-import GestionMediciones from "@/components/mediciones/gestion-mediciones";
+import { HistorialMediciones } from "@/components/mediciones/historial-mediciones";
 
 export const metadata: Metadata = {
   title: "Mediciones",
-  description: "Consulta y análisis de mediciones históricas.",
+  description: "Historial global de mediciones (auditoría y análisis).",
 };
 
 export default function PaginaMediciones() {
   return (
-     <div className="space-y-4">
-      <div className="flex items-start gap-2 rounded-2xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-        <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
-        <p>
-          Mediciones registrados en la plataforma. Rol <strong>viewer</strong>{" "}
-          sólo consulta; <strong>usuario</strong> y <strong>admin</strong> pueden
-          crear, editar y eliminar.
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Mediciones</h1>
+        <p className="text-sm text-muted-foreground">
+          Historial de mediciones registradas por la integración (ingesta IoT).
         </p>
       </div>
-      <GestionMediciones />
+      <HistorialMediciones />
     </div>
   );
 }
