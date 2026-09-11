@@ -7,6 +7,7 @@
  * lista de estados; texto => timeline textual; json => pre).
  */
 import { useMemo } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   LineChart,
@@ -18,19 +19,13 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { api } from "@/servicios/api";
+import { obtenerCanalesDeSensor } from "@/servicios/sensores.servicio";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatearFecha } from "@/utilidades";
 
-interface TipoDato {
-  id: string;
-  codigo: string;
-  nombre: string;
-  tipo_dato: string;
-  unidad_default: string | null;
-}
 interface FilaDetalle {
   id: string;
   codigo: string;
@@ -109,6 +104,8 @@ export function VistaDetalleSensor({ id }: { id: string }) {
             <ResumenUltimo sensor={sensor} />
           </div>
 
+          <TarjetaMagnitudes sensorId={sensor.id} />
+
           {tipoDato.startsWith("numer") && (
             <GraficaNumerica
               mediciones={histQ.data ?? []}
@@ -123,6 +120,70 @@ export function VistaDetalleSensor({ id }: { id: string }) {
         </>
       ) : null}
     </div>
+  );
+}
+
+function TarjetaMagnitudes({ sensorId }: { sensorId: string }) {
+  const canalesQ = useQuery({
+    queryKey: ["canales-sensor", sensorId],
+    queryFn: () => obtenerCanalesDeSensor(sensorId),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Magnitudes (canales)</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Cada canal representa una magnitud medida por este sensor y es lo que
+          recibe las mediciones y las reglas de alerta.
+        </p>
+      </CardHeader>
+      <CardContent>
+        {canalesQ.isLoading ? (
+          <Skeleton className="h-10 w-full" />
+        ) : canalesQ.error ? (
+          <Alert variant="destructive">
+            <AlertTitle>Error al cargar magnitudes</AlertTitle>
+            <AlertDescription>{(canalesQ.error as Error).message}</AlertDescription>
+          </Alert>
+        ) : (canalesQ.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Este sensor no tiene magnitudes registradas.
+          </p>
+        ) : (
+          <ul className="divide-y">
+            {(canalesQ.data ?? []).map((canal) => (
+              <li
+                key={canal.id}
+                className="flex flex-wrap items-center justify-between gap-2 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{canal.nombre}</p>
+                  <p className="text-xs text-muted-foreground">
+                    <code>{canal.codigo}</code>
+                    {canal.unidad ? ` · ${canal.unidad}` : ""}
+                    {canal.rango_min !== null && canal.rango_max !== null
+                      ? ` · rango ${canal.rango_min}…${canal.rango_max}`
+                      : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={canal.activo ? "secondary" : "outline"}>
+                    {canal.activo ? "Activo" : "Inactivo"}
+                  </Badge>
+                  <Link
+                    href={`/canales/${canal.id}`}
+                    className="text-xs text-primary underline-offset-4 hover:underline"
+                  >
+                    Ver canal
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -154,8 +215,6 @@ function InfoCard({ sensor }: { sensor: FilaDetalle }) {
 }
 
 function ResumenUltimo({ sensor }: { sensor: FilaDetalle }) {
-  const tiene =
-    sensor.ultimo_valor_numerico !== null || Boolean(sensor.ultimo_valor_texto);
   return (
     <Card>
       <CardHeader>

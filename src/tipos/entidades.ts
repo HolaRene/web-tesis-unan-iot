@@ -72,6 +72,24 @@ export interface Sensor {
   creado_en: string;
 }
 
+/**
+ * Magnitud (canal) declarada al crear/editar un sensor.
+ *
+ * Un mismo sensor físico puede exponer varias magnitudes: p. ej. un DHT22
+ * aporta temperatura y humedad relativa. Se envía en `POST/PATCH /sensors`
+ * dentro del campo `canales`.
+ */
+export interface MagnitudSensor {
+  tipo_variable_id: string;
+  codigo?: string | null;
+  nombre?: string | null;
+  unidad?: string | null;
+  rango_min?: number | null;
+  rango_max?: number | null;
+  precision_valor?: number | null;
+  activo?: boolean;
+}
+
 /** Medición registrada de un sensor. GET /api/v1/measurements */
 export interface Medicion {
   id: number;

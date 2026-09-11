@@ -14,7 +14,7 @@
  */
 import { useMemo, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { Alerta, Area, Dispositivo, Sensor } from "@/tipos";
+import type { Alerta, Area, Dispositivo, MedicionConSensor, Sensor } from "@/tipos";
 import { obtenerResumenDashboard } from "@/servicios/dashboard.servicio";
 
 /** Punto de una serie temporal para el gráfico de actividad. */
@@ -28,33 +28,18 @@ export interface ResumenDashboard {
   dispositivos: Dispositivo[];
   sensores: Sensor[];
   alertas: Alerta[];
-  mediciones: ReturnType<typeof _medicionVacia>[];
+  mediciones: MedicionConSensor[];
   totalAreas: number;
   totalDispositivos: number;
   dispositivosConectados: number;
   sensoresActivos: number;
   alertasActivas: number;
-  ultimasMediciones: ReturnType<typeof _medicionVacia>[];
+  ultimasMediciones: MedicionConSensor[];
   dispositivosRecientes: Dispositivo[];
   alertasRecientes: Alerta[];
   actividad: PuntoActividad[];
   cargando: boolean;
   error: string | null;
-}
-
-// helper tipográfico pequeño para mantener compatibilidad con la vista previa.
-function _medicionVacia() {
-  return {
-    id: 0,
-    sensor_id: "",
-    sensor_codigo: null,
-    sensor_nombre: null,
-    valor_numerico: null,
-    valor_texto: null,
-    calidad: "good",
-    registrado_en: "",
-    metadatos: null as Record<string, unknown> | null,
-  };
 }
 
 function formatearGrupo(iso: string | Date): string {
@@ -118,7 +103,6 @@ export function useResumenDashboard(): ResumenDashboard {
       cargando,
       error: error ? (error instanceof Error ? error.message : String(error)) : null,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [consulta.data, cargando, error]);
 
   return { ...datos, cargando, error: datos.error };

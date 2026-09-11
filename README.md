@@ -9,6 +9,11 @@ inteligentes, laboratorios y otros entornos IoT.
 
 > El monorepo contiene además la API REST en `../api` (Node.js + Express), que
 > expone los endpoints bajo `/api/v1`.
+>
+> 📘 **Modelo multivariable.** Un sensor puede tener varias magnitudes
+> (canales): p. ej. un DHT22 aporta temperatura y humedad. El editor de
+> magnitudes está en `/sensores` y el detalle en `/sensores/[id]`. Ver
+> [`../docs/modelo-multivariable.md`](../docs/modelo-multivariable.md).
 
 ## Stack tecnológico
 

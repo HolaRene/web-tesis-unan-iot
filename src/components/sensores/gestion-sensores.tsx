@@ -1,23 +1,23 @@
 "use client";
 
 /**
- * Gestión de Sensores (CRUD).
+ * Gestión de Sensores (CRUD) con modelo multivariable.
  *
- * Endpoints del backend bajo /api/v1/sensors:
+ * Un sensor puede exponer VARIAS magnitudes (canales). Ej.: un DHT22 aporta
+ * temperatura y humedad relativa. El formulario permite añadir/eliminar
+ * magnitudes y el backend crea un canal por cada una.
+ *
+ * Endpoints bajo /api/v1/sensors:
  *   GET /sensors, POST /sensors, PATCH /sensors/:id, DELETE /sensors/:id
+ *   GET /sensors/:id/canales  (magnitudes del sensor)
  * Crear/editar/eliminar exige rol `usuario` o `admin` (`viewer` sólo lee).
  */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import {
-  AlertCircle,
-  Loader2,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { AlertCircle, Loader2, Plus, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,30 +48,50 @@ import {
   crearSensor,
   actualizarSensor,
   eliminarSensor,
+  obtenerCanalesDeSensor,
+  type DatosSensor,
 } from "@/servicios/sensores.servicio";
 import { listarDispositivos } from "@/servicios/dispositivos.servicio";
 import { listarTiposVariable } from "@/servicios/tipos-variable.servicio";
-import type { Sensor, Dispositivo, TipoVariable } from "@/tipos";
+import type { MagnitudSensor, Sensor, Dispositivo, TipoVariable } from "@/tipos";
+
+/** Fila del editor de magnitudes en el formulario. */
+interface MagnitudFila {
+  /** Clave local estable para React. */
+  clave: string;
+  tipo_variable_id: string;
+  unidad: string;
+  rango_min: string;
+  rango_max: string;
+}
 
 const esquemaFormSensor = z.object({
   dispositivo_id: z.string().optional().nullable(),
-  tipo_variable_id: z.string().optional().nullable(),
   nombre: z.string().trim().min(1, "El nombre es obligatorio"),
   codigo: z.string().trim().min(1, "El código es obligatorio"),
   fabricante: z.string().trim().optional().nullable(),
   modelo: z.string().trim().optional().nullable(),
-  unidad: z.string().trim().optional().nullable(),
-  rango_min: z.string().trim().optional(),
-  rango_max: z.string().trim().optional(),
-  precision: z.string().trim().optional(),
 });
 type DatosFormSensor = z.infer<typeof esquemaFormSensor>;
+
+function nuevaClave(): string {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+/** Texto legible del tipo de variable: "Temperatura (°C, numeric)". */
+function etiquetaTipo(tipo: TipoVariable | undefined): string {
+  if (!tipo) return "Tipo desconocido";
+  const unidad = tipo.unidad_default ? ` · ${tipo.unidad_default}` : "";
+  return `${tipo.nombre} (${tipo.tipo_dato}${unidad})`;
+}
 
 function FormularioSensor({
   abierto,
   sensor,
   dispositivos,
   tipos,
+  magnitudesIniciales,
+  cargandoMagnitudes,
   enviando,
   error,
   onOpenChange,
@@ -81,10 +101,12 @@ function FormularioSensor({
   sensor: Sensor | null;
   dispositivos: Dispositivo[];
   tipos: TipoVariable[];
+  magnitudesIniciales: MagnitudFila[];
+  cargandoMagnitudes: boolean;
   enviando: boolean;
   error: string | null;
   onOpenChange: (o: boolean) => void;
-  onGuardar: (d: DatosFormSensor) => void;
+  onGuardar: (datos: DatosFormSensor, magnitudes: MagnitudSensor[]) => void;
 }) {
   const {
     register,
@@ -94,65 +116,73 @@ function FormularioSensor({
     resolver: zodResolver(esquemaFormSensor),
     defaultValues: {
       dispositivo_id: sensor?.dispositivo_id ?? "",
-      tipo_variable_id: sensor?.tipo_variable_id ?? "",
       nombre: sensor?.nombre ?? "",
       codigo: sensor?.codigo ?? "",
       fabricante: sensor?.fabricante ?? "",
       modelo: sensor?.modelo ?? "",
-      unidad: sensor?.unidad ?? "",
-      rango_min: sensor?.rango_min ?? "",
-      rango_max: sensor?.rango_max ?? "",
-      precision: sensor?.precision ?? "",
     },
   });
 
+  const [magnitudes, setMagnitudes] = useState<MagnitudFila[]>(
+    magnitudesIniciales.length > 0
+      ? magnitudesIniciales
+      : [{ clave: nuevaClave(), tipo_variable_id: "", unidad: "", rango_min: "", rango_max: "" }]
+  );
+
+  function agregarMagnitud() {
+    setMagnitudes((prev) => [
+      ...prev,
+      { clave: nuevaClave(), tipo_variable_id: "", unidad: "", rango_min: "", rango_max: "" },
+    ]);
+  }
+
+  function quitarMagnitud(clave: string) {
+    setMagnitudes((prev) => prev.filter((m) => m.clave !== clave));
+  }
+
+  function actualizarMagnitud(clave: string, campo: keyof MagnitudFila, valor: string) {
+    setMagnitudes((prev) =>
+      prev.map((m) => (m.clave === clave ? { ...m, [campo]: valor } : m))
+    );
+  }
+
+  function enviar(datos: DatosFormSensor) {
+    const canales: MagnitudSensor[] = magnitudes
+      .filter((m) => m.tipo_variable_id)
+      .map((m) => ({
+        tipo_variable_id: m.tipo_variable_id,
+        unidad: m.unidad.trim() || null,
+        rango_min: m.rango_min ? Number(m.rango_min) : null,
+        rango_max: m.rango_max ? Number(m.rango_max) : null,
+        activo: true,
+      }));
+    onGuardar(datos, canales);
+  }
+
+  const tiposSeleccionables = tipos;
+
   return (
-    <Dialog
-      open={abierto}
-      onOpenChange={(val) => onOpenChange(val)}
-    >
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+    <Dialog open={abierto} onOpenChange={(val) => onOpenChange(val)}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{sensor ? "Editar sensor" : "Nuevo sensor"}</DialogTitle>
         </DialogHeader>
-        <form
-          onSubmit={handleSubmit((datos) => onGuardar(datos))}
-          className="space-y-4"
-          noValidate
-        >
-          {/* Conectar con dispositivo y tipo de variable */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="sen-dispositivo">Dispositivo</Label>
-              <select
-                id="sen-dispositivo"
-                className="h-9 w-full rounded-2xl border bg-background px-3 text-sm"
-                {...register("dispositivo_id")}
-              >
-                <option value="">Sin dispositivo</option>
-                {dispositivos.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="sen-tipo">Tipo de variable</Label>
-              <select
-                id="sen-tipo"
-                className="h-9 w-full rounded-2xl border bg-background px-3 text-sm"
-                {...register("tipo_variable_id")}
-              >
-                <option value="">Sin tipo</option>
-                {tipos.map((tv) => (
-                  <option key={tv.id} value={tv.id}>
-                    {tv.nombre} ({tv.tipo_dato}
-                    {tv.unidad_default ? ` · ${tv.unidad_default}` : " · sin unidad"})
-                  </option>
-                ))}
-              </select>
-            </div>
+        <form onSubmit={handleSubmit(enviar)} className="space-y-4" noValidate>
+          {/* Dispositivo */}
+          <div className="grid gap-2">
+            <Label htmlFor="sen-dispositivo">Dispositivo</Label>
+            <select
+              id="sen-dispositivo"
+              className="h-9 w-full rounded-2xl border bg-background px-3 text-sm"
+              {...register("dispositivo_id")}
+            >
+              <option value="">Sin dispositivo</option>
+              {dispositivos.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.nombre}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -160,60 +190,141 @@ function FormularioSensor({
               <Label htmlFor="sen-nombre">Nombre</Label>
               <Input
                 id="sen-nombre"
-                placeholder="Temp sala 1"
+                placeholder="DHT22 sala 1"
                 aria-invalid={!!errors.nombre}
                 {...register("nombre")}
               />
               {errors.nombre && (
-                <p className="text-sm text-destructive">
-                  {errors.nombre.message}
-                </p>
+                <p className="text-sm text-destructive">{errors.nombre.message}</p>
               )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="sen-codigo">Código</Label>
               <Input
                 id="sen-codigo"
-                placeholder="TEMP-01"
+                placeholder="DHT22-01"
                 aria-invalid={!!errors.codigo}
                 {...register("codigo")}
               />
               {errors.codigo && (
-                <p className="text-sm text-destructive">
-                  {errors.codigo.message}
-                </p>
+                <p className="text-sm text-destructive">{errors.codigo.message}</p>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="sen-fab">Fabricante</Label>
-              <Input id="sen-fab" {...register("fabricante")} />
+              <Input id="sen-fab" placeholder="Aosong" {...register("fabricante")} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="sen-modelo">Modelo</Label>
-              <Input id="sen-modelo" {...register("modelo")} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="sen-unidad">Unidad</Label>
-              <Input id="sen-unidad" placeholder="°C, %, ppm…" {...register("unidad")} />
+              <Input id="sen-modelo" placeholder="DHT22" {...register("modelo")} />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="grid gap-2">
-              <Label htmlFor="sen-min">Rango mín.</Label>
-              <Input id="sen-min" type="number" step="any" {...register("rango_min")} />
+          {/* Editor de magnitudes (canales) */}
+          <div className="space-y-3 rounded-2xl border bg-muted/30 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">Magnitudes del sensor</p>
+                <p className="text-xs text-muted-foreground">
+                  Un sensor puede medir varias magnitudes (p. ej. un DHT22:
+                  temperatura y humedad). Se crea un canal por cada una.
+                </p>
+              </div>
+              <Button type="button" size="sm" variant="outline" onClick={agregarMagnitud}>
+                <Plus className="size-4" aria-hidden />
+                Añadir
+              </Button>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="sen-max">Rango máx.</Label>
-              <Input id="sen-max" type="number" step="any" {...register("rango_max")} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="sen-prec">Precisión</Label>
-              <Input id="sen-prec" type="number" step="any" {...register("precision")} />
-            </div>
+
+            {cargandoMagnitudes ? (
+              <Skeleton className="h-16 w-full" />
+            ) : magnitudes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Sin magnitudes: se creará una a partir del tipo principal si lo
+                indicas.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {magnitudes.map((m, indice) => (
+                  <div
+                    key={m.clave}
+                    className="grid grid-cols-1 gap-3 rounded-xl border bg-background p-3 sm:grid-cols-[1fr_auto]"
+                  >
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="grid gap-1.5">
+                        <Label className="text-xs">Tipo de variable *</Label>
+                        <select
+                          aria-label={`Tipo de variable de la magnitud ${indice + 1}`}
+                          className="h-9 w-full rounded-xl border bg-background px-3 text-sm"
+                          value={m.tipo_variable_id}
+                          onChange={(e) =>
+                            actualizarMagnitud(m.clave, "tipo_variable_id", e.target.value)
+                          }
+                        >
+                          <option value="">Selecciona una magnitud…</option>
+                          {tiposSeleccionables.map((tv) => (
+                            <option key={tv.id} value={tv.id}>
+                              {etiquetaTipo(tv)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label className="text-xs">Unidad</Label>
+                        <Input
+                          className="h-9"
+                          placeholder="°C, %, ppm…"
+                          value={m.unidad}
+                          onChange={(e) =>
+                            actualizarMagnitud(m.clave, "unidad", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label className="text-xs">Rango mín.</Label>
+                        <Input
+                          className="h-9"
+                          type="number"
+                          step="any"
+                          value={m.rango_min}
+                          onChange={(e) =>
+                            actualizarMagnitud(m.clave, "rango_min", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label className="text-xs">Rango máx.</Label>
+                        <Input
+                          className="h-9"
+                          type="number"
+                          step="any"
+                          value={m.rango_max}
+                          onChange={(e) =>
+                            actualizarMagnitud(m.clave, "rango_max", e.target.value)
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-start justify-end sm:items-center">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Quitar magnitud ${indice + 1}`}
+                        title="Quitar magnitud"
+                        className="text-destructive hover:bg-destructive/10"
+                        onClick={() => quitarMagnitud(m.clave)}
+                      >
+                        <X className="size-4" aria-hidden />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {error && (
@@ -255,10 +366,7 @@ export function GestionSensores() {
 
   const sensores = useQuery({ queryKey: ["sensores"], queryFn: listarSensores });
   const dispQuery = useQuery({ queryKey: ["dispositivos"], queryFn: listarDispositivos });
-  const tiposQuery = useQuery({
-    queryKey: ["tipos-variable"],
-    queryFn: listarTiposVariable,
-  });
+  const tiposQuery = useQuery({ queryKey: ["tipos-variable"], queryFn: listarTiposVariable });
   const dispositivos = dispQuery.data ?? [];
   const tipos = tiposQuery.data ?? [];
 
@@ -268,9 +376,13 @@ export function GestionSensores() {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sensores"] }),
     }),
     actualizar: useMutation({
-      mutationFn: ({ id, datos }: { id: string; datos: Partial<Sensor> }) =>
+      mutationFn: ({ id, datos }: { id: string; datos: DatosSensor }) =>
         actualizarSensor(id, datos),
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sensores"] }),
+      onSuccess: (_d, variables) => {
+        queryClient.invalidateQueries({ queryKey: ["sensores"] });
+        queryClient.invalidateQueries({ queryKey: ["canales-sensor", variables.id] });
+        queryClient.invalidateQueries({ queryKey: ["canales"] });
+      },
     }),
     eliminar: useMutation({
       mutationFn: eliminarSensor,
@@ -283,20 +395,31 @@ export function GestionSensores() {
   const [borrar, setBorrar] = useState<Sensor | null>(null);
   const [errorOp, setErrorOp] = useState<string | null>(null);
 
-  async function guardar(datos: DatosFormSensor) {
+  // Magnitudes del sensor en edición (para precargar el formulario).
+  const canalesSensor = useQuery({
+    queryKey: ["canales-sensor", editar?.id],
+    queryFn: () => obtenerCanalesDeSensor(editar!.id),
+    enabled: abrir && !!editar?.id,
+  });
+
+  const magnitudesIniciales: MagnitudFila[] = (canalesSensor.data ?? []).map((c) => ({
+    clave: c.id,
+    tipo_variable_id: c.tipo_variable_id ?? "",
+    unidad: c.unidad ?? "",
+    rango_min: c.rango_min !== null && c.rango_min !== undefined ? String(c.rango_min) : "",
+    rango_max: c.rango_max !== null && c.rango_max !== undefined ? String(c.rango_max) : "",
+  }));
+
+  async function guardar(datos: DatosFormSensor, magnitudes: MagnitudSensor[]) {
     setErrorOp(null);
-    const registro = {
+    const registro: DatosSensor = {
       dispositivo_id: datos.dispositivo_id || null,
-      tipo_variable_id: datos.tipo_variable_id || null,
       nombre: datos.nombre,
       codigo: datos.codigo,
       fabricante: datos.fabricante || null,
       modelo: datos.modelo || null,
-      unidad: datos.unidad || null,
-      rango_min: datos.rango_min ? String(datos.rango_min) : null,
-      rango_max: datos.rango_max ? String(datos.rango_max) : null,
-      precision: datos.precision ? String(datos.precision) : null,
       activo: true,
+      canales: magnitudes,
     };
     try {
       if (editar) {
@@ -331,6 +454,8 @@ export function GestionSensores() {
         sensor={editar}
         dispositivos={dispositivos}
         tipos={tipos}
+        magnitudesIniciales={magnitudesIniciales}
+        cargandoMagnitudes={!!editar && canalesSensor.isLoading}
         enviando={mut.crear.isPending || mut.actualizar.isPending}
         error={errorOp}
         onOpenChange={(val) => {
@@ -389,10 +514,9 @@ export function GestionSensores() {
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Código</TableHead>
-                  <TableHead>Unidad</TableHead>
-                  <TableHead>Rango</TableHead>
+                  <TableHead>Tipo / modelo</TableHead>
                   <TableHead>Estado</TableHead>
-                  {puedeEscribir && <TableHead className="w-12" />}
+                  {puedeEscribir && <TableHead className="w-20" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -400,9 +524,8 @@ export function GestionSensores() {
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.nombre}</TableCell>
                     <TableCell>{s.codigo}</TableCell>
-                    <TableCell>{s.unidad ?? "—"}</TableCell>
                     <TableCell>
-                      {s.rango_min ?? "—"} … {s.rango_max ?? "—"}
+                      {[s.fabricante, s.modelo].filter(Boolean).join(" ") || "—"}
                     </TableCell>
                     <TableCell>
                       <Badge variant={s.activo ? "secondary" : "outline"}>
@@ -435,8 +558,8 @@ export function GestionSensores() {
               <DialogTitle>Eliminar sensor</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-muted-foreground">
-              ¿Seguro que deseas eliminar el sensor “{borrar.nombre}”? Esta
-              acción no se puede deshacer.
+              ¿Seguro que deseas eliminar el sensor “{borrar.nombre}”? Se
+              eliminarán también sus canales y mediciones asociadas.
             </p>
             <DialogFooter>
               <Button variant="outline" onClick={() => setBorrar(null)}>
