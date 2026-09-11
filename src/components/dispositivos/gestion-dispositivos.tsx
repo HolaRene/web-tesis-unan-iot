@@ -47,6 +47,8 @@ import {
 } from "@/components/ui/dialog";
 import { AccionesFila } from "@/components/compartidos/acciones-fila";
 import { useSesion } from "@/hooks/use-sesion";
+import { useEventosDispositivos } from "@/hooks/use-eventos-dispositivos";
+import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
 import {
   listarDispositivos,
   crearDispositivo,
@@ -55,7 +57,12 @@ import {
 } from "@/servicios/dispositivos.servicio";
 import { listarAreas } from "@/servicios/areas.servicio";
 import type { Dispositivo, Area } from "@/tipos";
-import { formatearFecha, textoEstado, varianteEstadoDispositivo } from "@/utilidades";
+import {
+  formatearFecha,
+  haceTiempo,
+  textoEstado,
+  varianteEstadoDispositivo,
+} from "@/utilidades";
 
 /** Esquema local para el formulario de dispositivo. */
 const esquemaFormDispositivo = z.object({
@@ -284,9 +291,15 @@ export function GestionDispositivos() {
   const { usuario } = useSesion();
   const puedeEscribir = usuario?.rol === "usuario" || usuario?.rol === "admin";
 
+  // Actualizaciones en tiempo real: WS parchea la caché con setQueryData.
+  useEventosDispositivos();
+
   const dispositivos = useQuery({
     queryKey: ["dispositivos"],
     queryFn: listarDispositivos,
+    // Polling de RESPALDO: con WebSocket activo ya no hace falta cada 15 s.
+    // Se deja muy poco frecuente por si la conexión WS cae.
+    refetchInterval: POLLING_RESPALDO_MS,
   });
   const areasQuery = useQuery({ queryKey: ["areas"], queryFn: listarAreas });
 
@@ -443,7 +456,13 @@ export function GestionDispositivos() {
                       </Badge>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
-                      {d.ultima_conexion ? formatearFecha(d.ultima_conexion) : "—"}
+                      {d.ultima_conexion ? (
+                        <span title={formatearFecha(d.ultima_conexion)}>
+                          {haceTiempo(d.ultima_conexion)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
                     {puedeEscribir && (
                       <TableCell>

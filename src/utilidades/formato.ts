@@ -2,7 +2,7 @@
  * Utilidades de formato de fechas, números y valores de medición.
  * Usa date-fns (ya instalado) para operaciones de fecha y hora.
  */
-import { format } from "date-fns";
+import { format, formatDistanceToNowStrict } from "date-fns";
 import { es } from "date-fns/locale";
 
 /** Formato de fecha/hora local legible en español. */
@@ -52,4 +52,18 @@ export function aFechaLocal(iso?: string | null): Date | null {
   if (!iso) return null;
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Texto relativo "hace X" (p. ej. "hace 3 minutos") para la última conexión de
+ * un dispositivo. Devuelve "—" si no hay fecha válida y "ahora mismo" si es
+ * muy reciente.
+ */
+export function haceTiempo(fecha?: string | Date | null): string {
+  if (!fecha) return "—";
+  const d = typeof fecha === "string" ? new Date(fecha) : fecha;
+  if (Number.isNaN(d.getTime())) return "—";
+  const segundos = Math.abs(Date.now() - d.getTime()) / 1000;
+  if (segundos < 45) return "ahora mismo";
+  return `hace ${formatDistanceToNowStrict(d, { locale: es })}`;
 }

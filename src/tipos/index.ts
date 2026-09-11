@@ -5,3 +5,4 @@
 export * from "./api";
 export * from "./auth";
 export * from "./entidades";
+export * from "./realtime";

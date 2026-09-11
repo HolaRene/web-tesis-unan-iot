@@ -15,7 +15,9 @@ import { obtenerDispositivo } from "@/servicios/dispositivos.servicio";
 import { listarSensores } from "@/servicios/sensores.servicio";
 import { listarActuadores, crearActuador } from "@/servicios/actuadores.servicio";
 import { useSesion } from "@/hooks/use-sesion";
-import type { Actuador } from "@/tipos";
+import { useEventosDispositivos } from "@/hooks/use-eventos-dispositivos";
+import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
+import type { Actuador, Dispositivo } from "@/tipos";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,16 +42,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  formatearFecha,
+  haceTiempo,
+  textoEstado,
+  varianteEstadoDispositivo,
+} from "@/utilidades";
 
 export function DetalleDispositivo({ id }: { id: string }) {
   const queryClient = useQueryClient();
   const { usuario } = useSesion();
   const puedeEscribir = usuario?.rol === "usuario" || usuario?.rol === "admin";
 
+  // Actualizaciones en vivo (estado, última conexión, IP, metadatos…).
+  useEventosDispositivos();
+
   const dispQuery = useQuery({
     queryKey: ["dispositivo", id],
     queryFn: () => obtenerDispositivo(id),
     enabled: !!id,
+    // Polling de respaldo: el WS ya mantiene esto al día; esto es por si cae.
+    refetchInterval: POLLING_RESPALDO_MS,
   });
 
   const sensoresQ = useQuery({ queryKey: ["sensores"], queryFn: listarSensores });
@@ -96,6 +109,8 @@ export function DetalleDispositivo({ id }: { id: string }) {
           )}
         </div>
       </div>
+
+      {dispositivo && <TarjetaEstado dispositivo={dispositivo} />}
 
       {dispQuery.isLoading ? (
         <Skeleton className="h-8 w-64" />
@@ -173,6 +188,64 @@ export function DetalleDispositivo({ id }: { id: string }) {
         </Tabs>
       )}
     </div>
+  );
+}
+
+/**
+ * Estado real del dispositivo: estado reportado, última conexión ("hace X") y
+ * metadatos libres (firmware, RSSI, uptime…) que envían las integraciones.
+ */
+function TarjetaEstado({ dispositivo }: { dispositivo: Dispositivo }) {
+  const metadatos = dispositivo.metadatos ?? {};
+  const entradas = Object.entries(metadatos);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Estado y telemetría</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Información reportada por el equipo (heartbeat) o deducida de la
+          ingesta de mediciones.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid gap-1">
+            <dt className="text-xs text-muted-foreground">Estado</dt>
+            <dd>
+              <Badge variant={varianteEstadoDispositivo(dispositivo.estado)}>
+                {textoEstado(dispositivo.estado)}
+              </Badge>
+            </dd>
+          </div>
+          <div className="grid gap-1">
+            <dt className="text-xs text-muted-foreground">Última conexión</dt>
+            <dd className="text-sm" title={formatearFecha(dispositivo.ultima_conexion)}>
+              {dispositivo.ultima_conexion
+                ? haceTiempo(dispositivo.ultima_conexion)
+                : "Sin contacto"}
+            </dd>
+          </div>
+          <div className="grid gap-1">
+            <dt className="text-xs text-muted-foreground">Dirección IP</dt>
+            <dd className="text-sm">{dispositivo.direccion_ip ?? "—"}</dd>
+          </div>
+        </dl>
+
+        {entradas.length > 0 && (
+          <div className="grid gap-2">
+            <p className="text-xs text-muted-foreground">Metadatos reportados</p>
+            <div className="flex flex-wrap gap-2">
+              {entradas.map(([clave, valor]) => (
+                <Badge key={clave} variant="outline" className="font-normal">
+                  {clave}: {String(valor)}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
