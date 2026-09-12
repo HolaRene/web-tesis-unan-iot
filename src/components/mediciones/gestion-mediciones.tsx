@@ -30,6 +30,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PanelesGraficosMediciones } from "@/components/mediciones/paneles-graficos-mediciones";
+import { useEventosMediciones } from "@/hooks/use-eventos-mediciones";
 import { formatearFecha } from "@/utilidades";
 
 const selectClases =
@@ -38,6 +39,10 @@ const selectClases =
 export default function GestionMediciones() {
   const { usuario } = useSesion();
   const puedeEscribir = usuario?.rol === "usuario" || usuario?.rol === "admin";
+
+  // Actualizaciones en tiempo real: las mediciones nuevas se insertan en la
+  // caché con setQueryData (sin esperar al polling).
+  useEventosMediciones();
 
   const sensoresQuery = useQuery({
     queryKey: ["sensores"],

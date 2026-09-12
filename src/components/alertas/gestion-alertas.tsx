@@ -12,6 +12,7 @@ import {
   useMutacionesAlertas,
 } from "@/hooks/useAlertas";
 import { useSesion } from "@/hooks/use-sesion";
+import { useEventosAlertas } from "@/hooks/use-eventos-alertas";
 import { listarSensores } from "@/servicios/sensores.servicio";
 
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,9 @@ const selectClases =
 export default function GestionAlertas() {
   const { usuario } = useSesion();
   const puedeEscribir = usuario?.rol === "usuario" || usuario?.rol === "admin";
+
+  // Alertas en vivo: creación, reconocimiento y resolución por WebSocket.
+  useEventosAlertas();
 
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [filtroSeveridad, setFiltroSeveridad] = useState("todas");

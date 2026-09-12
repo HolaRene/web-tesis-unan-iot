@@ -41,9 +41,19 @@ export async function eliminarAlerta(id: string): Promise<void> {
 
 // Helper para acciones comunes
 export async function reconocerAlerta(id: string): Promise<Alerta> {
-  return actualizarAlerta(id, { estado: "acknowledged" });
+  const respuesta = await api.enviar<Alerta>(
+    `/alerts/${id}/reconocer`,
+    undefined,
+    "PATCH"
+  );
+  return respuesta.datos;
 }
 
 export async function resolverAlerta(id: string): Promise<Alerta> {
-  return actualizarAlerta(id, { estado: "resolved" });
+  const respuesta = await api.enviar<Alerta>(
+    `/alerts/${id}/resolver`,
+    undefined,
+    "PATCH"
+  );
+  return respuesta.datos;
 }

@@ -9,6 +9,7 @@ import {
   type FiltrosMediciones,
 } from "@/servicios/mediciones.servicio";
 import type { Medicion } from "@/tipos";
+import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
 
 // ------------------------------------------------------------------
 // Hook para listar mediciones con filtros
@@ -16,8 +17,9 @@ export function useListarMediciones(filtros?: FiltrosMediciones) {
   return useQuery({
     queryKey: ["mediciones", filtros],
     queryFn: () => listarMediciones(filtros),
-    // Opcional: actualizar cada 30 segundos para datos en tiempo real
-     refetchInterval: 1000 * 15,
+    // Polling de RESPALDO: el WebSocket inserta las mediciones nuevas vía
+    // `medicion:nueva`; esto queda solo por si el WS no está disponible.
+    refetchInterval: POLLING_RESPALDO_MS,
   });
 }
 

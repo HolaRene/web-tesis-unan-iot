@@ -9,6 +9,7 @@ import {
   resolverAlerta,
 } from "@/servicios/alertas.servicio";
 import type { Alerta } from "@/tipos";
+import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
 
 // ------------------------------------------------------------------
 // Hook para listar todas las alertas
@@ -16,8 +17,9 @@ export function useListarAlertas() {
   return useQuery({
     queryKey: ["alertas"],
     queryFn: listarAlertas,
-    // Opcional: refetch cada 30 segundos para alertas en tiempo real
-    refetchInterval: 1000 * 30,
+    // Polling de RESPALDO: el WebSocket mantiene las alertas al día
+    // (alerta:creada / alerta:actualizada / alerta:resuelta).
+    refetchInterval: POLLING_RESPALDO_MS,
   });
 }
 
