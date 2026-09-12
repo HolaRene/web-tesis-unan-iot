@@ -9,6 +9,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/servicios/api";
 import { listarSensores } from "@/servicios/sensores.servicio";
+import { useEventosMediciones } from "@/hooks/use-eventos-mediciones";
 import type { Medicion } from "@/tipos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -25,6 +26,9 @@ import { formatearFecha } from "@/utilidades";
 
 export function HistorialMediciones() {
   const [limite, setLimite] = useState(100);
+
+  // Las mediciones nuevas entran solas por WS (clave ["mediciones", ...]).
+  useEventosMediciones();
 
   const sensoresQuery = useQuery({
     queryKey: ["sensores-labels"],

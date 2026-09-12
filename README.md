@@ -1,5 +1,5 @@
 # MonitorIT — Frontend
-
+donjoe@test.com - Donjoe123
 Plataforma genérica de monitorización e integración IoT/industrial.
 
 Este es el **frontend** de la plataforma, construido con **Next.js (App Router) +

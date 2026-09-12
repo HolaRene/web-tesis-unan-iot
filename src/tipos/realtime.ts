@@ -59,3 +59,42 @@ export type ParcheDispositivo = Partial<
     "estado" | "ultima_conexion" | "direccion_ip" | "metadatos"
   >
 > & { id: string };
+
+/** Medición tal como la envía `medicion:nueva` (con datos de su canal). */
+export interface MedicionTiempoReal {
+  id: number;
+  canal_id: string | null;
+  canal_codigo: string | null;
+  canal_nombre: string | null;
+  canal_unidad: string | null;
+  canal_tipo_dato: string | null;
+  sensor_id: string | null;
+  valor_numerico: number | null;
+  valor_texto: string | null;
+  valor_booleano: boolean | null;
+  valor_json: Record<string, unknown> | null;
+  calidad: string;
+  registrado_en: string | null;
+}
+
+/** Payload de `medicion:nueva` (un evento por lote). */
+export interface PayloadMedicionNueva {
+  dispositivo: string | null;
+  total: number;
+  mediciones: MedicionTiempoReal[];
+}
+
+/** Payload de `canal:actualizado` (un evento por canal). */
+export interface PayloadCanalActualizado {
+  canal_id: string | null;
+  canal_codigo: string | null;
+  canal_nombre: string | null;
+  canal_unidad: string | null;
+  canal_tipo_dato: string | null;
+  sensor_id: string | null;
+  ultimo_valor_numerico: number | null;
+  ultimo_valor_texto: string | null;
+  ultimo_valor_booleano: boolean | null;
+  calidad: string;
+  registrado_en: string | null;
+}

@@ -20,6 +20,8 @@ import {
 } from "recharts";
 import { api } from "@/servicios/api";
 import { obtenerCanalesDeSensor } from "@/servicios/sensores.servicio";
+import { useEventosMediciones } from "@/hooks/use-eventos-mediciones";
+import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,12 +58,16 @@ interface FilaDetalle {
 }
 
 export function VistaDetalleSensor({ id }: { id: string }) {
+  // Los eventos realtime mantienen el historial y los canales del sensor vivos.
+  useEventosMediciones();
+
   const sensorQ = useQuery({
     queryKey: ["sensor", id],
     queryFn: async (): Promise<FilaDetalle> => {
       const r = await api.obtener<FilaDetalle>(`/sensors/${id}`);
       return r.datos;
     },
+    refetchInterval: POLLING_RESPALDO_MS,
   });
 
   const histQ = useQuery({
@@ -72,6 +78,7 @@ export function VistaDetalleSensor({ id }: { id: string }) {
       );
       return r.datos.mediciones;
     },
+    refetchInterval: POLLING_RESPALDO_MS,
   });
 
   const sensor = sensorQ.data;

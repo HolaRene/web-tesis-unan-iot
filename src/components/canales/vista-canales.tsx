@@ -4,13 +4,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { obtenerCanales } from "@/servicios/canales.servicio";
 import { TarjetaCanal } from "@/components/canales/tarjeta-canal";
+import { useEventosMediciones } from "@/hooks/use-eventos-mediciones";
+import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function VistaCanales() {
+  // El WS parchea último valor y contador de cada canal sin refetch.
+  useEventosMediciones();
+
   const { data: canales, isLoading, error } = useQuery({
     queryKey: ["canales", "grilla"],
     queryFn: () => obtenerCanales(),
+    // Respaldo por si el WebSocket no está disponible.
+    refetchInterval: POLLING_RESPALDO_MS,
   });
 
   return (

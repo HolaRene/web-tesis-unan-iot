@@ -6,6 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { obtenerCanalPorId, obtenerMedicionesCanal } from "@/servicios/canales.servicio";
 import { obtenerReglas } from "@/servicios/reglas-alerta.servicio";
+import { useEventosMediciones } from "@/hooks/use-eventos-mediciones";
+import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
 import FormularioRegla from "@/components/reglas-alerta/formulario-regla";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,9 +16,23 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatearHora } from "@/utilidades";
 
 export function DetalleCanal({ id }: { id: string }) {
-  const canalQ = useQuery({ queryKey: ["canal", id], queryFn: () => obtenerCanalPorId(id) });
-  const histQ = useQuery({ queryKey: ["canal-hist", id], queryFn: () => obtenerMedicionesCanal(id, { limite: 200 }) });
-  const reglasQ = useQuery({ queryKey: ["reglas-canal", id], queryFn: () => obtenerReglas({ canal_id: id }) });
+  // El WS añade los puntos nuevos a la serie y parchea el último valor.
+  useEventosMediciones();
+
+  const canalQ = useQuery({
+    queryKey: ["canal", id],
+    queryFn: () => obtenerCanalPorId(id),
+    refetchInterval: POLLING_RESPALDO_MS,
+  });
+  const histQ = useQuery({
+    queryKey: ["canal-hist", id],
+    queryFn: () => obtenerMedicionesCanal(id, { limite: 200 }),
+    refetchInterval: POLLING_RESPALDO_MS,
+  });
+  const reglasQ = useQuery({
+    queryKey: ["reglas-canal", id],
+    queryFn: () => obtenerReglas({ canal_id: id }),
+  });
 
   const canal = canalQ.data;
   const tipoDato = (canal?.tipo_dato ?? "").toLowerCase();
