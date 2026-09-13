@@ -248,10 +248,6 @@ function FormularioDispositivo({
               <Label htmlFor="disp-modelo">Modelo</Label>
               <Input id="disp-modelo" {...register("modelo")} />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="disp-identificador">Identificador</Label>
-              <Input id="disp-identificador" {...register("identificador")} />
-            </div>
           </div>
 
           {error && (
