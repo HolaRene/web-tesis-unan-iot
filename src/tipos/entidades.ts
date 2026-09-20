@@ -133,14 +133,47 @@ export interface Alerta {
   metadatos: Record<string, unknown> | null;
 }
 
-/** Cámara IP vinculada a un dispositivo. GET /api/v1/cameras */
+/** Estados posibles de una cámara IP. */
+export type EstadoCamara =
+  | "activa"
+  | "inactiva"
+  | "conectada"
+  | "desconectada"
+  | "error";
+
+/**
+ * Cámara IP. GET /api/v1/cameras
+ *
+ * NOTA DE SEGURIDAD: este tipo NO incluye credenciales RTSP ni la URL
+ * completa del stream. `ruta_stream` es el PATH (p. ej. `/stream1`) y
+ * `ruta_webrtc` la ruta pública en MediaMTX.
+ */
 export interface Camara {
   id: string;
+  nombre: string;
+  descripcion: string | null;
+  area_id: string | null;
   dispositivo_id: string | null;
-  protocolo: string | null;
-  ruta_stream: string | null;
+  direccion_ip: string | null;
+  puerto_rtsp: number;
+  protocolo: string;
+  /** PATH del stream en la cámara (p. ej. `/stream1`), nunca la URL completa. */
+  ruta_stream: string;
+  /** Ruta pública del stream en MediaMTX (p. ej. `/camara-qui-1`). */
+  ruta_webrtc: string | null;
+  estado: EstadoCamara;
+  activa: boolean;
+  ultima_conexion: string | null;
   grabacion_habilitada: boolean;
+  metadatos: Record<string, unknown>;
   configuracion: Record<string, unknown> | null;
+  creado_en: string;
+  actualizado_en: string;
+
+  /** Relaciones legibles (vienen resueltas en el listado y el detalle). */
+  area_nombre?: string | null;
+  dispositivo_nombre?: string | null;
+  dispositivo_identificador?: string | null;
 }
 
 /** Integración externa (ej. ThingsBoard Cloud). GET /api/v1/integrations */

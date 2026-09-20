@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { PaginaEnConstruccion } from "@/components/compartidos/pagina-en-construccion";
+import { Info } from "lucide-react";
+import { GestionCamaras } from "@/components/camaras/gestion-camaras";
 
 export const metadata: Metadata = {
   title: "Cámaras",
@@ -8,14 +9,17 @@ export const metadata: Metadata = {
 
 export default function PaginaCamaras() {
   return (
-    <PaginaEnConstruccion
-      titulo="Cámaras IP"
-      descripcion="Preparación de vista de cámaras: nombre, área, estado, protocolo y stream."
-      pendientes={[
-        "Reproductor HLS/WebRTC (componente reproductor-camara).",
-        "Listado de cámaras con estado.",
-        "Asociación de cámaras a áreas y dispositivos.",
-      ]}
-    />
+    <div className="space-y-4">
+      <div className="flex items-start gap-2 rounded-2xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+        <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <p>
+          Cámaras IP administradas por la plataforma. El vídeo se sirve por{" "}
+          <strong>MediaMTX</strong> (RTSP → WebRTC) y{" "}
+          <strong>no pasa por la API</strong>. Aquí solo se guarda la
+          configuración y el estado.
+        </p>
+      </div>
+      <GestionCamaras />
+    </div>
   );
 }
