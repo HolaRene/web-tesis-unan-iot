@@ -6,22 +6,13 @@
  * historial bien según el tipo de dato (numérico => LineChart; booleano =>
  * lista de estados; texto => timeline textual; json => pre).
  */
-import { useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 import { api } from "@/servicios/api";
 import { obtenerCanalesDeSensor } from "@/servicios/sensores.servicio";
 import { useEventosMediciones } from "@/hooks/use-eventos-mediciones";
 import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
+import { PanelHistorial } from "@/components/graficos/panel-historial";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -81,7 +72,14 @@ export function VistaDetalleSensor({ id }: { id: string }) {
     refetchInterval: POLLING_RESPALDO_MS,
   });
 
+  // Canales (magnitudes) del sensor: alimentan la comparación del historial.
+  const canalesQ = useQuery({
+    queryKey: ["canales-sensor", id],
+    queryFn: () => obtenerCanalesDeSensor(id),
+  });
+
   const sensor = sensorQ.data;
+  const canalesSensor = canalesQ.data ?? [];
   const tipoDato = (sensor?.tipo_dato ?? "") as string;
 
   return (
@@ -113,16 +111,24 @@ export function VistaDetalleSensor({ id }: { id: string }) {
 
           <TarjetaMagnitudes sensorId={sensor.id} />
 
-          {tipoDato.startsWith("numer") && (
-            <GraficaNumerica
-              mediciones={histQ.data ?? []}
+          {/*
+            Historial agregado: el backend agrupa en SQL (hora/día/semana/mes)
+            y devuelve media, mín, máx y nº de muestras por intervalo. Se usa
+            para todo tipo de dato numérico; para booleanos/texto se mantiene
+            la lista de lecturas.
+          */}
+          {tipoDato.startsWith("numer") ? (
+            <PanelHistorial
+              sensorId={sensor.id}
+              canales={canalesSensor}
               unidad={sensor.unidad ?? ""}
-              min={sensor.rango_min ? Number(sensor.rango_min) : undefined}
-              max={sensor.rango_max ? Number(sensor.rango_max) : undefined}
             />
-          )}
-          {!tipoDato.startsWith("numer") && (
-            <ListaHistorial filas={histQ.data ?? []} tipoDato={tipoDato} unidad={sensor.unidad ?? ""} />
+          ) : (
+            <ListaHistorial
+              filas={histQ.data ?? []}
+              tipoDato={tipoDato}
+              unidad={sensor.unidad ?? ""}
+            />
           )}
         </>
       ) : null}
@@ -250,51 +256,6 @@ function ResumenUltimo({ sensor }: { sensor: FilaDetalle }) {
   );
 }
 
-function GraficaNumerica({
-  mediciones,
-  unidad,
-  min,
-  max,
-}: {
-  mediciones: Array<Record<string, unknown>>;
-  unidad: string;
-  min?: number;
-  max?: number;
-}) {
-  const datos = useMemo(
-    () =>
-      (mediciones as unknown as Array<{ valor_numerico: number | null; registrado_en: string }>)
-        .filter((m) => m.valor_numerico !== null)
-        .map((m) => ({
-          hora: formatearFecha(m.registrado_en),
-          valor: m.valor_numerico as number,
-        })),
-    [mediciones]
-  );
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Historial numérico ({unidad})</CardTitle>
-      </CardHeader>
-      <CardContent className="h-64">
-        {datos.length === 0 ? (
-          <p className="text-muted-foreground">Sin mediciones numéricas.</p>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={datos}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="hora" className="text-xs" />
-              <YAxis className="text-xs" domain={[min ?? "auto", max ?? "auto"]} />
-              <Tooltip />
-              <Line type="monotone" dataKey="valor" stroke="#0891b2" dot={false} strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 function ListaHistorial({
   filas,

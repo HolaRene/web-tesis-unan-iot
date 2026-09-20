@@ -103,6 +103,40 @@ export interface Medicion {
   metadatos: Record<string, unknown> | null;
 }
 
+/**
+ * Un cubo temporal con las estadísticas de las mediciones que contiene.
+ * GET /api/v1/sensors/:id/series
+ *
+ * El backend agrega en SQL, así que el navegador recibe unos pocos puntos
+ * en lugar de todas las mediciones del periodo.
+ */
+export interface CuboSerie {
+  /** Inicio del intervalo (ISO). */
+  cubo: string;
+  media: number | null;
+  minimo: number | null;
+  maximo: number | null;
+  /** Desviación estándar muestral (null si solo hay una muestra). */
+  desviacion: number | null;
+  /** Número de mediciones dentro del cubo. */
+  muestras: number;
+}
+
+/** Respuesta del endpoint de series agregadas. */
+export interface SeriesAgregadas {
+  sensor_id?: string;
+  intervalo: "hora" | "dia" | "semana" | "mes";
+  desde: string | null;
+  hasta: string | null;
+  resumen: {
+    media: number | null;
+    minimo: number | null;
+    maximo: number | null;
+    muestras: number;
+  };
+  series: CuboSerie[];
+}
+
 /** Umbral de alerta para un sensor. GET /api/v1/thresholds */
 export interface Umbral {
   id: string;

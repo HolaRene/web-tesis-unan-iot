@@ -1,19 +1,17 @@
 "use client";
 
-/** Detalle del canal: información + historial (numérico a línea) + reglas. */
-import { useMemo } from "react";
+/** Detalle del canal: información + historial agregado + reglas. */
 import { useQuery } from "@tanstack/react-query";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { obtenerCanalPorId, obtenerMedicionesCanal } from "@/servicios/canales.servicio";
+import { obtenerCanalPorId } from "@/servicios/canales.servicio";
 import { obtenerReglas } from "@/servicios/reglas-alerta.servicio";
 import { useEventosMediciones } from "@/hooks/use-eventos-mediciones";
 import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
+import { PanelHistorial } from "@/components/graficos/panel-historial";
 import FormularioRegla from "@/components/reglas-alerta/formulario-regla";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { formatearHora } from "@/utilidades";
 
 export function DetalleCanal({ id }: { id: string }) {
   // El WS añade los puntos nuevos a la serie y parchea el último valor.
@@ -24,11 +22,6 @@ export function DetalleCanal({ id }: { id: string }) {
     queryFn: () => obtenerCanalPorId(id),
     refetchInterval: POLLING_RESPALDO_MS,
   });
-  const histQ = useQuery({
-    queryKey: ["canal-hist", id],
-    queryFn: () => obtenerMedicionesCanal(id, { limite: 200 }),
-    refetchInterval: POLLING_RESPALDO_MS,
-  });
   const reglasQ = useQuery({
     queryKey: ["reglas-canal", id],
     queryFn: () => obtenerReglas({ canal_id: id }),
@@ -37,16 +30,6 @@ export function DetalleCanal({ id }: { id: string }) {
   const canal = canalQ.data;
   const tipoDato = (canal?.tipo_dato ?? "").toLowerCase();
   const numerico = tipoDato.startsWith("numer");
-
-  const serie = useMemo(() => {
-    const rows = histQ.data?.mediciones ?? [];
-    return rows
-      .filter((m: Record<string, unknown>) => m.valor_numerico !== null)
-      .map((m: Record<string, unknown>) => ({
-        hora: formatearHora(String(m.registrado_en)),
-        valor: Number(m.valor_numerico),
-      }));
-  }, [histQ.data]);
 
   return (
     <div className="space-y-5">
@@ -78,22 +61,16 @@ export function DetalleCanal({ id }: { id: string }) {
           </Card>
 
           {numerico ? (
-            <Card>
-              <CardHeader><CardTitle className="text-base">Historial ({canal.unidad})</CardTitle></CardHeader>
-              <CardContent className="h-64">
-                {serie.length === 0 ? <p className="text-muted-foreground">Sin mediciones.</p> : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={serie}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="hora" className="text-xs" />
-                      <YAxis className="text-xs" />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="valor" stroke="#0891b2" dot={false} strokeWidth={2} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
+            /*
+              Historial agregado por intervalo (hora/día/semana/mes) con
+              media y banda mín–máx. La agregación la hace el backend en SQL,
+              así que la vista aguanta meses de datos.
+            */
+            <PanelHistorial
+              sensorId={canal.sensor_id ?? ""}
+              canalId={canal.id}
+              unidad={canal.unidad ?? ""}
+            />
           ) : (
             <Card>
               <CardHeader><CardTitle className="text-base">Último valor</CardTitle></CardHeader>
