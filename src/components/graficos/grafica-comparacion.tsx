@@ -22,24 +22,24 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { format, parseISO } from "date-fns";
-import { es } from "date-fns/locale";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PALETA_CANALES } from "@/configuracion/graficos";
-import type { CuboSerie } from "@/tipos";
+import { rellenarMalla, type CuboEntrada } from "@/utilidades/series-temporales";
 
 /** Una serie de un canal concreto. */
 export interface SerieCanal {
   canal_id: string;
   nombre: string;
   unidad: string;
-  cubos: CuboSerie[];
+  cubos: CuboEntrada[];
 }
 
 interface GraficaComparacionProps {
   series: SerieCanal[];
-  formatoEje: string;
+  /** Intervalo de agrupación (para alinear la malla temporal). */
+  intervalo: string;
+  desde: Date;
+  hasta: Date;
   titulo?: string;
 }
 
@@ -57,34 +57,39 @@ function num(valor: number | null | undefined, decimales = 2): string {
 
 export function GraficaComparacion({
   series,
-  formatoEje,
+  intervalo,
+  desde,
+  hasta,
   titulo = "Comparación de magnitudes",
 }: GraficaComparacionProps) {
   const { datos, canales } = useMemo(() => {
-    // Se indexa por instante de cubo para alinear los canales en el tiempo.
+    // Cada canal se coloca en la MISMA malla temporal, de modo que los
+    // huecos de un canal no desalinean a los demás y el eje llega a "ahora".
+    const porCanal = series.map((serie) => ({
+      serie,
+      malla: rellenarMalla(serie.cubos, intervalo, desde, hasta),
+    }));
+
+    // Se indexa por instante para unir las series en un solo conjunto.
     const mapa = new Map<string, PuntoComparado>();
 
-    series.forEach((serie) => {
-      serie.cubos.forEach((cubo) => {
-        const claveTiempo = String(cubo.cubo);
-        const existente = mapa.get(claveTiempo) ?? {
-          etiqueta: format(parseISO(claveTiempo), formatoEje, { locale: es }),
-          etiquetaLarga: format(parseISO(claveTiempo), "dd MMM yyyy HH:mm", {
-            locale: es,
-          }),
+    for (const { serie, malla } of porCanal) {
+      for (const punto of malla) {
+        const existente = mapa.get(punto.instante) ?? {
+          etiqueta: punto.etiqueta,
+          etiquetaLarga: punto.etiquetaLarga,
         };
-        // La clave del dato es el id del canal para evitar colisiones.
-        existente[serie.canal_id] = cubo.media;
-        mapa.set(claveTiempo, existente);
-      });
-    });
+        existente[serie.canal_id] = punto.media;
+        mapa.set(punto.instante, existente);
+      }
+    }
 
     const ordenados = [...mapa.entries()]
       .sort(([a], [b]) => (a < b ? -1 : 1))
       .map(([, valor]) => valor);
 
     return { datos: ordenados, canales: series };
-  }, [series, formatoEje]);
+  }, [series, intervalo, desde, hasta]);
 
   if (datos.length === 0) {
     return (

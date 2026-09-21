@@ -125,7 +125,7 @@ export interface CuboSerie {
 /** Respuesta del endpoint de series agregadas. */
 export interface SeriesAgregadas {
   sensor_id?: string;
-  intervalo: "hora" | "dia" | "semana" | "mes";
+  intervalo: "minuto" | "hora" | "dia" | "semana" | "mes";
   desde: string | null;
   hasta: string | null;
   resumen: {

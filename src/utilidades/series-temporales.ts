@@ -1,0 +1,296 @@
+/**
+ * Motor de agregación temporal en el cliente.
+ *
+ * ¿Por qué existe si el backend ya agrega en SQL?
+ *
+ *   - El SQL devuelve SOLO los cubos con datos. En un gráfico temporal eso
+ *     deja huecos invisibles: si no hay mediciones de 12:00 a 12:30, los
+ *     puntos 11:59 y 12:31 quedan pegados y parece que el tiempo no avanzó.
+ *   - El intervalo por minuto (vista "en vivo") necesita recalcularse con
+ *     cada refresco sobre las últimas mediciones, sin ir al servidor.
+ *
+ * Estas funciones son PURAS: reciben datos y devuelven la malla temporal
+ * completa, anclada a `ahora`. Así el gráfico siempre avanza y los huecos
+ * se ven como huecos.
+ */
+
+/** Un punto de la malla temporal (puede no tener datos). */
+export interface PuntoTemporal {
+  /** Instante del cubo (ISO). */
+  instante: string;
+  /** Etiqueta corta para el eje X. */
+  etiqueta: string;
+  /** Etiqueta completa para el tooltip. */
+  etiquetaLarga: string;
+  media: number | null;
+  minimo: number | null;
+  maximo: number | null;
+  muestras: number;
+  /** [mín, máx] listo para el área de rango de Recharts. */
+  banda: [number, number] | null;
+}
+
+/** Entrada mínima: cualquier cubo agregado (venga del backend o de aquí). */
+export interface CuboEntrada {
+  cubo: string | Date;
+  media: number | null;
+  minimo: number | null;
+  maximo: number | null;
+  muestras: number;
+}
+
+/** Milisegundos por intervalo. */
+const MS: Record<string, number> = {
+  minuto: 60_000,
+  hora: 3_600_000,
+  dia: 86_400_000,
+  semana: 604_800_000,
+};
+
+/**
+ * Trunca una fecha al inicio de su intervalo.
+ *
+ * Para `mes` no se usa aritmética de milisegundos (los meses tienen distinta
+ * duración): se ajusta directamente al día 1.
+ */
+export function truncar(fecha: Date, intervalo: string): Date {
+  const d = new Date(fecha);
+  switch (intervalo) {
+    case 'minuto':
+      d.setSeconds(0, 0);
+      break;
+    case 'hora':
+      d.setMinutes(0, 0, 0);
+      break;
+    case 'dia':
+      d.setHours(0, 0, 0, 0);
+      break;
+    case 'semana': {
+      d.setHours(0, 0, 0, 0);
+      // Semana que empieza en lunes (convención en España).
+      const dia = (d.getDay() + 6) % 7;
+      d.setDate(d.getDate() - dia);
+      break;
+    }
+    case 'mes':
+      d.setHours(0, 0, 0, 0);
+      d.setDate(1);
+      break;
+    default:
+      d.setMinutes(0, 0, 0);
+  }
+  return d;
+}
+
+/** Avanza una fecha un intervalo completo. */
+export function avanzar(fecha: Date, intervalo: string): Date {
+  const d = new Date(fecha);
+  if (intervalo === 'mes') {
+    // Los meses no tienen duración fija: se avanza de uno en uno.
+    d.setMonth(d.getMonth() + 1);
+    return d;
+  }
+  return new Date(d.getTime() + (MS[intervalo] ?? MS.hora));
+}
+
+/** Comprueba si dos fechas caen en el mismo cubo. */
+function mismoCubo(a: Date, b: Date, intervalo: string): boolean {
+  if (intervalo === 'mes') {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+  }
+  return a.getTime() === b.getTime();
+}
+
+/**
+ * Construye la malla temporal COMPLETA desde `desde` hasta `hasta`,
+ * rellenando con `null` los intervalos sin datos.
+ *
+ * Es la pieza que hace que el gráfico "avance": el eje siempre termina en
+ * `hasta` (normalmente ahora mismo), haya datos o no.
+ *
+ * @param cubos     Cubos con datos (pueden venir desordenados).
+ * @param intervalo Intervalo de agrupación.
+ * @param desde     Inicio de la malla.
+ * @param hasta     Fin de la malla (se ancla al presente).
+ * @param limite    Máximo de puntos (protege el render).
+ */
+export function rellenarMalla(
+  cubos: CuboEntrada[],
+  intervalo: string,
+  desde: Date,
+  hasta: Date,
+  limite = 2000
+): PuntoTemporal[] {
+  // Índice por instante truncado para localizar cada cubo en O(1).
+  const porInstante = new Map<number, CuboEntrada>();
+  for (const c of cubos) {
+    const clave = truncar(new Date(c.cubo), intervalo).getTime();
+    porInstante.set(clave, c);
+  }
+
+  const puntos: PuntoTemporal[] = [];
+  let cursor = truncar(desde, intervalo);
+  const fin = hasta.getTime();
+
+  // Si el rango es enorme para el intervalo pedido, no se genera la malla
+  // completa: se devuelven solo los cubos con datos (evita colgar el render).
+  const estimado = estimarPuntos(desde, hasta, intervalo);
+  if (estimado > limite) {
+    return cubos
+      .map((c) => aPunto(c, intervalo))
+      .sort((a, b) => (a.instante < b.instante ? -1 : 1));
+  }
+
+  while (cursor.getTime() <= fin && puntos.length < limite) {
+    const cubo = porInstante.get(cursor.getTime());
+    puntos.push(
+      cubo
+        ? aPunto(cubo, intervalo)
+        : {
+            instante: cursor.toISOString(),
+            ...etiquetas(cursor, intervalo),
+            media: null,
+            minimo: null,
+            maximo: null,
+            muestras: 0,
+            banda: null,
+          }
+    );
+    cursor = avanzar(cursor, intervalo);
+  }
+
+  return puntos;
+}
+
+/** Número aproximado de puntos que generaría la malla. */
+export function estimarPuntos(
+  desde: Date,
+  hasta: Date,
+  intervalo: string
+): number {
+  if (intervalo === 'mes') {
+    const meses =
+      (hasta.getFullYear() - desde.getFullYear()) * 12 +
+      (hasta.getMonth() - desde.getMonth());
+    return Math.max(1, meses + 1);
+  }
+  const paso = MS[intervalo] ?? MS.hora;
+  return Math.max(1, Math.floor((hasta.getTime() - desde.getTime()) / paso) + 1);
+}
+
+/** Etiquetas del eje X y del tooltip según el intervalo. */
+export function etiquetas(
+  fecha: Date,
+  intervalo: string
+): { etiqueta: string; etiquetaLarga: string } {
+  const p = (n: number) => String(n).padStart(2, '0');
+  const meses = [
+    'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+    'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+  ];
+
+  const hora = `${p(fecha.getHours())}:${p(fecha.getMinutes())}`;
+  const dia = `${fecha.getDate()} ${meses[fecha.getMonth()]}`;
+  const larga = `${dia} ${fecha.getFullYear()} ${hora}`;
+
+  switch (intervalo) {
+    case 'minuto':
+    case 'hora':
+      return { etiqueta: hora, etiquetaLarga: larga };
+    case 'dia':
+      return { etiqueta: dia, etiquetaLarga: larga };
+    case 'semana':
+      return { etiqueta: `Sem ${semanaDelAno(fecha)}`, etiquetaLarga: larga };
+    case 'mes':
+      return {
+        etiqueta: `${meses[fecha.getMonth()]} ${String(fecha.getFullYear()).slice(2)}`,
+        etiquetaLarga: larga,
+      };
+    default:
+      return { etiqueta: hora, etiquetaLarga: larga };
+  }
+}
+
+/** Número de semana ISO aproximado. */
+function semanaDelAno(fecha: Date): number {
+  const inicio = new Date(fecha.getFullYear(), 0, 1);
+  const dias = Math.floor((fecha.getTime() - inicio.getTime()) / 86_400_000);
+  return Math.ceil((dias + inicio.getDay() + 1) / 7);
+}
+
+/** Convierte un cubo con datos en un punto de la malla. */
+function aPunto(c: CuboEntrada, intervalo: string): PuntoTemporal {
+  const fecha = truncar(new Date(c.cubo), intervalo);
+  return {
+    instante: fecha.toISOString(),
+    ...etiquetas(fecha, intervalo),
+    media: c.media,
+    minimo: c.minimo,
+    maximo: c.maximo,
+    muestras: c.muestras,
+    banda:
+      c.minimo !== null && c.maximo !== null ? [c.minimo, c.maximo] : null,
+  };
+}
+
+/**
+ * Agrega mediciones CRUDAS por intervalo, en el cliente.
+ *
+ * Se usa para la vista "en vivo" (por minuto) sobre las últimas
+ * mediciones: así el gráfico se recalcula en cada refresco sin pedir al
+ * servidor una consulta por minuto.
+ */
+export function agregarMediciones(
+  mediciones: Array<{ valor_numerico: number | null; registrado_en: string }>,
+  intervalo: string
+): CuboEntrada[] {
+  const acumulado = new Map<
+    number,
+    { suma: number; minimo: number; maximo: number; muestras: number }
+  >();
+
+  for (const m of mediciones) {
+    if (m.valor_numerico === null || m.valor_numerico === undefined) continue;
+    const clave = truncar(new Date(m.registrado_en), intervalo).getTime();
+    const actual = acumulado.get(clave);
+    if (actual) {
+      actual.suma += m.valor_numerico;
+      actual.minimo = Math.min(actual.minimo, m.valor_numerico);
+      actual.maximo = Math.max(actual.maximo, m.valor_numerico);
+      actual.muestras += 1;
+    } else {
+      acumulado.set(clave, {
+        suma: m.valor_numerico,
+        minimo: m.valor_numerico,
+        maximo: m.valor_numerico,
+        muestras: 1,
+      });
+    }
+  }
+
+  return [...acumulado.entries()]
+    .map(([instante, a]) => ({
+      cubo: new Date(instante),
+      media: a.suma / a.muestras,
+      minimo: a.minimo,
+      maximo: a.maximo,
+      muestras: a.muestras,
+    }))
+    .sort((a, b) => a.cubo.getTime() - b.cubo.getTime());
+}
+
+/**
+ * ¿El cubo corresponde al intervalo en curso? Sirve para resaltar el punto
+ * actual (el que todavía se está llenando).
+ */
+export function esCuboActual(
+  instante: string,
+  intervalo: string,
+  ahora: Date
+): boolean {
+  return mismoCubo(
+    truncar(new Date(instante), intervalo),
+    truncar(ahora, intervalo),
+    intervalo
+  );
+}

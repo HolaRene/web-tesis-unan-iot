@@ -6,7 +6,14 @@
  */
 
 /** Intervalo de agrupación admitido por el backend. */
-export type IntervaloAgregacion = "hora" | "dia" | "semana" | "mes";
+export type IntervaloAgregacion = "minuto" | "hora" | "dia" | "semana" | "mes";
+
+/**
+ * Milisegundos entre refrescos de la vista "en vivo" (chart por minuto).
+ * Suficientemente corto para verse fluido y suficientemente largo para no
+ * castigar la API.
+ */
+export const REFRESCO_EN_VIVO_MS = 10_000;
 
 /** Opción de intervalo para los selectores. */
 export interface OpcionIntervalo {
@@ -17,6 +24,7 @@ export interface OpcionIntervalo {
 }
 
 export const INTERVALOS: OpcionIntervalo[] = [
+  { valor: "minuto", etiqueta: "Por minuto", formatoEje: "HH:mm" },
   { valor: "hora", etiqueta: "Por hora", formatoEje: "HH:mm" },
   { valor: "dia", etiqueta: "Por día", formatoEje: "dd MMM" },
   { valor: "semana", etiqueta: "Por semana", formatoEje: "'Sem' w" },

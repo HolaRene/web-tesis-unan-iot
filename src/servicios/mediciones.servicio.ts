@@ -15,7 +15,7 @@ export interface FiltrosMediciones {
 
 /** Opciones de la consulta de series agregadas. */
 export interface OpcionesSeries {
-  intervalo?: "hora" | "dia" | "semana" | "mes";
+  intervalo?: "minuto" | "hora" | "dia" | "semana" | "mes";
   canal_id?: string;
   desde?: string;
   hasta?: string;
@@ -54,7 +54,7 @@ export async function obtenerSeries(
     area_id?: string;
     desde?: string;
     hasta?: string;
-    intervalo?: "hora" | "dia" | "semana" | "mes";
+    intervalo?: "minuto" | "hora" | "dia" | "semana" | "mes";
     limite?: number;
   } = {}
 ): Promise<SeriesAgregadas> {
