@@ -7,12 +7,17 @@
 
 export const infoSitio = {
   /** Nombre corto de la plataforma. */
-  nombre: "MonitorIT",
+  nombre: "ControlaIoT",
   /** Subtítulo descriptivo para headers, pies y metadatos. */
   eslogan: "Monitorización inteligente para entornos conectados",
   /** Descripción oficial de la plataforma. */
   descripcion:
     "Plataforma genérica de monitorización e integración IoT/industrial. Centraliza datos de sensores, PLC, dispositivos IoT y otras fuentes para supervisión local y remota.",
+  /**
+   * Logo de la plataforma (en /public).
+   * Es cuadrado (2000x2000) con fondo transparente.
+   */
+  logo: "/ControlaIOT.png",
 } as const;
 
 /** Enlaces de navegación de la sección pública. */

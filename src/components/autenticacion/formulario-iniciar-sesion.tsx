@@ -71,7 +71,7 @@ export function FormularioIniciarSesion() {
       <CardHeader className="space-y-1 text-center">
         <CardTitle className="text-2xl">Iniciar sesión</CardTitle>
         <CardDescription>
-          Accede al panel de MonitorIT
+          Accede al panel de ControlaIoT
         </CardDescription>
       </CardHeader>
 

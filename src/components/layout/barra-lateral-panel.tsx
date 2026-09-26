@@ -6,7 +6,7 @@
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Home } from "lucide-react";
+import { Home } from "lucide-react";
 
 import {
   Sidebar,
@@ -27,6 +27,7 @@ import {
   type ItemNavegacion,
 } from "@/configuracion/navegacion";
 import { infoSitio } from "@/configuracion/sitio";
+import { Logo } from "@/components/layout/logo";
 
 /** Determina si un ítem corresponde a la ruta activa (por prefijo). */
 function esRutaActiva(pathname: string, href: string): boolean {
@@ -62,8 +63,8 @@ export function BarraLateralPanel() {
               isActive={pathname === "/dashboard"}
               render={<Link href="/dashboard" />}
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Activity className="size-4" aria-hidden />
+              <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg">
+                <Logo tamano={32} />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">

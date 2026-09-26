@@ -4,7 +4,7 @@ import { infoSitio } from "@/configuracion/sitio";
 
 export const metadata: Metadata = {
   title: "Acerca del proyecto",
-  description: "Información sobre la plataforma MonitorIT y su caso de estudio.",
+  description: "Información sobre la plataforma ControlaIoT y su caso de estudio.",
 };
 
 export default function PaginaAcerca() {

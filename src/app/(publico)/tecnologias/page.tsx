@@ -19,7 +19,7 @@ import {
 
 export const metadata: Metadata = {
   title: "Tecnologías",
-  description: "Stack tecnológico de la plataforma MonitorIT.",
+  description: "Stack tecnológico de la plataforma ControlaIoT.",
 };
 
 const tecnologias = [

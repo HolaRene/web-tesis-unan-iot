@@ -78,7 +78,7 @@ export function FormularioRegistrar() {
       <CardHeader className="space-y-1 text-center">
         <CardTitle className="text-2xl">Crear cuenta</CardTitle>
         <CardDescription>
-          Regístrate para acceder al panel de MonitorIT
+          Regístrate para acceder al panel de ControlaIoT
         </CardDescription>
       </CardHeader>
 

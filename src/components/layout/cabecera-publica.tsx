@@ -5,10 +5,11 @@
  * Incluye enlaces de navegación y botón para ingresar al sistema.
  */
 import Link from "next/link";
-import { Activity, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { SelectorTema } from "@/components/layout/selector-tema";
+import { Logo } from "@/components/layout/logo";
 import { infoSitio, navegacionPublica } from "@/configuracion/sitio";
 
 export function CabeceraPublica() {
@@ -17,13 +18,11 @@ export function CabeceraPublica() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
-          className="flex items-center gap-2 font-medium"
+          className="font-medium"
           aria-label={`${infoSitio.nombre} - inicio`}
         >
-          <Activity className="size-5 text-primary" aria-hidden />
-          <span className="text-sm font-semibold tracking-tight">
-            {infoSitio.nombre}
-          </span>
+          {/* Logo + nombre de la plataforma. */}
+          <Logo tamano={40} conNombre prioridad />
         </Link>
 
         <nav

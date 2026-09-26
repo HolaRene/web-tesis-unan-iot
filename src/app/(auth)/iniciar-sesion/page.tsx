@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Activity, BadgeCheck } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 
 import { FormularioIniciarSesion } from "@/components/autenticacion/formulario-iniciar-sesion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Logo } from "@/components/layout/logo";
 import { infoSitio } from "@/configuracion/sitio";
 
 export const metadata: Metadata = {
   title: "Iniciar sesión",
-  description: "Acceso al panel de MonitorIT.",
+  description: "Acceso al panel de ControlaIoT.",
 };
 
 interface PropsIniciarSesion {
@@ -24,10 +25,9 @@ export default async function PaginaIniciarSesion({
   return (
     <div className="w-full max-w-md space-y-6">
       <div className="flex flex-col items-center gap-2 text-center">
-        <div className="flex items-center gap-2">
-          <Activity className="size-6 text-primary" aria-hidden />
-          <span className="text-lg font-semibold">{infoSitio.nombre}</span>
-        </div>
+        {/* Logo de la plataforma, centrado sobre el formulario. */}
+        <Logo tamano={72} prioridad />
+        <span className="text-lg font-semibold">{infoSitio.nombre}</span>
       </div>
 
       {cuentaCreada && (
