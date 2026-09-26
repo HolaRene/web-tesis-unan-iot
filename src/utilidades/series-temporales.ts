@@ -132,12 +132,17 @@ export function rellenarMalla(
   let cursor = truncar(desde, intervalo);
   const fin = hasta.getTime();
 
+  // ¿El rango cruza más de un día? Entonces las etiquetas de hora/minuto
+  // deben incluir el día para no ser ambiguas.
+  const abarcaVariosDias =
+    truncar(desde, 'dia').getTime() !== truncar(hasta, 'dia').getTime();
+
   // Si el rango es enorme para el intervalo pedido, no se genera la malla
   // completa: se devuelven solo los cubos con datos (evita colgar el render).
   const estimado = estimarPuntos(desde, hasta, intervalo);
   if (estimado > limite) {
     return cubos
-      .map((c) => aPunto(c, intervalo))
+      .map((c) => aPunto(c, intervalo, abarcaVariosDias))
       .sort((a, b) => (a.instante < b.instante ? -1 : 1));
   }
 
@@ -145,10 +150,10 @@ export function rellenarMalla(
     const cubo = porInstante.get(cursor.getTime());
     puntos.push(
       cubo
-        ? aPunto(cubo, intervalo)
+        ? aPunto(cubo, intervalo, abarcaVariosDias)
         : {
             instante: cursor.toISOString(),
-            ...etiquetas(cursor, intervalo),
+            ...etiquetas(cursor, intervalo, abarcaVariosDias),
             media: null,
             minimo: null,
             maximo: null,
@@ -178,10 +183,21 @@ export function estimarPuntos(
   return Math.max(1, Math.floor((hasta.getTime() - desde.getTime()) / paso) + 1);
 }
 
-/** Etiquetas del eje X y del tooltip según el intervalo. */
+/**
+ * Etiquetas del eje X y del tooltip según el intervalo.
+ *
+ * `abarcaVariosDias` resuelve un problema de lectura: con intervalo "por hora"
+ * sobre 7 días, el eje mostraba solo "14:00" repetido y no se sabía de qué día
+ * era cada punto. Cuando el rango cruza varios días, la etiqueta incluye el
+ * día ("24 sep 14:00").
+ *
+ * Con intervalo "por día" la etiqueta es SIEMPRE la fecha del día, porque cada
+ * punto representa el promedio completo de ese día (no una hora concreta).
+ */
 export function etiquetas(
   fecha: Date,
-  intervalo: string
+  intervalo: string,
+  abarcaVariosDias = false
 ): { etiqueta: string; etiquetaLarga: string } {
   const p = (n: number) => String(n).padStart(2, '0');
   const meses = [
@@ -195,10 +211,19 @@ export function etiquetas(
 
   switch (intervalo) {
     case 'minuto':
+      return {
+        // En la vista en vivo (minutos) basta la hora si es el mismo día.
+        etiqueta: abarcaVariosDias ? `${dia} ${hora}` : hora,
+        etiquetaLarga: larga,
+      };
     case 'hora':
-      return { etiqueta: hora, etiquetaLarga: larga };
+      return {
+        etiqueta: abarcaVariosDias ? `${dia} ${hora}` : hora,
+        etiquetaLarga: larga,
+      };
     case 'dia':
-      return { etiqueta: dia, etiquetaLarga: larga };
+      // Cada punto es el promedio de un día completo: se etiqueta con la fecha.
+      return { etiqueta: dia, etiquetaLarga: `${dia} ${fecha.getFullYear()}` };
     case 'semana':
       return { etiqueta: `Sem ${semanaDelAno(fecha)}`, etiquetaLarga: larga };
     case 'mes':
@@ -219,11 +244,15 @@ function semanaDelAno(fecha: Date): number {
 }
 
 /** Convierte un cubo con datos en un punto de la malla. */
-function aPunto(c: CuboEntrada, intervalo: string): PuntoTemporal {
+function aPunto(
+  c: CuboEntrada,
+  intervalo: string,
+  abarcaVariosDias = false
+): PuntoTemporal {
   const fecha = truncar(new Date(c.cubo), intervalo);
   return {
     instante: fecha.toISOString(),
-    ...etiquetas(fecha, intervalo),
+    ...etiquetas(fecha, intervalo, abarcaVariosDias),
     media: c.media,
     minimo: c.minimo,
     maximo: c.maximo,

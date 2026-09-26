@@ -37,9 +37,16 @@ export interface OpcionRango {
   etiqueta: string;
   /** Horas hacia atrás desde ahora. `null` = sin límite. */
   horas: number | null;
+  /**
+   * Días naturales hacia atrás. Tiene prioridad sobre `horas` cuando está
+   * definido: "hoy" y "ayer" son días completos, no ventanas de 24 h.
+   */
+  dias?: number;
 }
 
 export const RANGOS: OpcionRango[] = [
+  { valor: "hoy", etiqueta: "Hoy", horas: null, dias: 0 },
+  { valor: "ayer", etiqueta: "Ayer", horas: null, dias: 1 },
   { valor: "24h", etiqueta: "Últimas 24 h", horas: 24 },
   { valor: "7d", etiqueta: "Últimos 7 días", horas: 24 * 7 },
   { valor: "30d", etiqueta: "Últimos 30 días", horas: 24 * 30 },
@@ -53,20 +60,69 @@ export const RANGO_POR_DEFECTO = "7d";
 /** Intervalo por defecto. */
 export const INTERVALO_POR_DEFECTO: IntervaloAgregacion = "hora";
 
+/** Inicio del día local de una fecha. */
+function inicioDelDia(fecha: Date): Date {
+  const d = new Date(fecha);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 /**
- * Calcula el rango ISO `desde`/`hasta` a partir de un rango predefinido.
- * Devuelve `undefined` en `desde` cuando el rango es "todo".
+ * Calcula el rango `desde`/`hasta` a partir de un rango predefinido.
+ *
+ * IMPORTANTE: `ahora` se REDONDEA a la hora en punto antes de calcular el
+ * rango. Esa decisión resuelve dos problemas a la vez:
+ *
+ *   1. El bug original: `hasta` se calculaba una vez al abrir la página y se
+ *      quedaba congelado, así que las mediciones posteriores no aparecían.
+ *      Redondeando, el rango avanza solo con el paso de las horas.
+ *
+ *   2. El parpadeo que introdujo el primer arreglo: si el rango incluye los
+ *      minutos y segundos actuales, su valor cambia en cada tick del reloj
+ *      (cada 10 s). Como el rango forma parte de la clave de caché de
+ *      TanStack Query, cada cambio se interpreta como una consulta NUEVA:
+ *      el gráfico vuelve a estado "cargando" y se recarga entero.
+ *
+ * Con el redondeo, la clave de caché solo cambia una vez por hora, así que los
+ * charts no se recargan continuamente pero acaban incluyendo los datos nuevos.
+ *
+ * @param valorRango 'hoy' | 'ayer' | '24h' | '7d' | '30d' | '90d' | 'todo'
+ * @param ahora      Instante de referencia (normalmente el actual).
+ * @param redondear  Redondear a la hora en punto (por defecto sí).
  */
-export function calcularRango(valorRango: string): {
+export function calcularRango(
+  valorRango: string,
+  ahora: Date = new Date(),
+  redondear = true
+): {
   desde?: string;
   hasta?: string;
 } {
-  const rango = RANGOS.find((r) => r.valor === valorRango) ?? RANGOS[1];
+  const rango = RANGOS.find((r) => r.valor === valorRango) ?? RANGOS[3];
+
+  // Instante estable: se descartan minutos, segundos y milisegundos para que
+  // el resultado no cambie en cada tick del reloj.
+  const referencia = new Date(ahora);
+  if (redondear) referencia.setMinutes(0, 0, 0);
+
+  // "Hoy" y "Ayer" son días naturales completos.
+  if (rango.dias !== undefined) {
+    const inicioHoy = inicioDelDia(referencia);
+    const desde = new Date(inicioHoy);
+    desde.setDate(desde.getDate() - rango.dias);
+    // Para "hoy" el fin es la hora en punto actual; para "ayer", el final
+    // de ese día.
+    const hasta =
+      rango.dias === 0
+        ? new Date(referencia)
+        : new Date(inicioHoy.getTime() - 1);
+    return { desde: desde.toISOString(), hasta: hasta.toISOString() };
+  }
+
   if (rango.horas === null) return {};
 
-  const hasta = new Date();
-  const desde = new Date(hasta.getTime() - rango.horas * 60 * 60 * 1000);
-  return { desde: desde.toISOString(), hasta: hasta.toISOString() };
+  const desde = new Date(referencia.getTime() - rango.horas * 60 * 60 * 1000);
+  return { desde: desde.toISOString(), hasta: referencia.toISOString() };
 }
 
 /**
@@ -77,6 +133,9 @@ export function calcularRango(valorRango: string): {
  */
 export function intervaloParaRango(valorRango: string): IntervaloAgregacion {
   switch (valorRango) {
+    // Un solo día: se ve bien por hora (24 puntos).
+    case "hoy":
+    case "ayer":
     case "24h":
       return "hora";
     case "7d":

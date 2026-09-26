@@ -82,21 +82,48 @@ export function PanelHistorial({
     intervaloParaRango(RANGO_POR_DEFECTO)
   );
 
-  const { desde, hasta } = useMemo(() => calcularRango(rango), [rango]);
-  // "Ahora" como estado (no como llamada a Date.now() en render, que React
-  // considera impuro): el eje se ancla al presente y avanza solo.
-  const ahora = useAhora(REFRESCO_EN_VIVO_MS);
+  /*
+   * DOS RELOJES, CADA UNO CON SU PROPÓSITO
+   *
+   * El problema anterior: un único reloj que cambiaba cada 10 s alimentaba el
+   * rango del histórico. Como el rango forma parte de la clave de caché de
+   * TanStack Query, cada tick se interpretaba como una consulta nueva: el
+   * gráfico volvía a "cargando" y se recargaba entero cada 10 segundos.
+   *
+   *   - `ahoraHistorico`: cambia una vez por MINUTO, y `calcularRango` lo
+   *     redondea a la hora en punto. La clave de caché del histórico solo
+   *     cambia una vez por hora → sin recargas ni parpadeo.
+   *
+   *   - `ahoraVivo`: cambia cada 15 s y se usa SOLO en el panel "En vivo",
+   *     que sí debe refrescarse porque su propósito es mostrar el presente.
+   */
+  const ahoraHistorico = useAhora(60_000);
+  const ahoraVivo = useAhora(REFRESCO_EN_VIVO_MS);
+
+  // El rango se calcula con el reloj lento y se redondea a la hora en punto,
+  // así que su valor es estable dentro de cada hora.
+  const { desde, hasta } = useMemo(
+    () => calcularRango(rango, ahoraHistorico),
+    [rango, ahoraHistorico]
+  );
+
   const fechaDesde = useMemo(
     () =>
-      desde ? new Date(desde) : new Date(ahora.getTime() - 7 * 86_400_000),
-    [desde, ahora]
+      desde
+        ? new Date(desde)
+        : new Date(ahoraHistorico.getTime() - 7 * 86_400_000),
+    [desde, ahoraHistorico]
   );
-  const fechaHasta = ahora;
-  // Ventana de la vista en vivo: últimos 30 minutos.
+  const fechaHasta = useMemo(
+    () => (hasta ? new Date(hasta) : ahoraHistorico),
+    [hasta, ahoraHistorico]
+  );
+  // Ventana de la vista en vivo: últimos 30 minutos desde el reloj rápido.
   const desdeEnVivo = useMemo(
-    () => new Date(ahora.getTime() - 30 * 60_000),
-    [ahora]
+    () => new Date(ahoraVivo.getTime() - 30 * 60_000),
+    [ahoraVivo]
   );
+  const hastaEnVivo = ahoraVivo;
 
   // 1) Histórico agregado en SQL.
   const historico = useSeriesSensor(sensorId, {
@@ -219,8 +246,8 @@ export function PanelHistorial({
             desde={fechaDesde}
             hasta={fechaHasta}
             unidad={unidad}
-            titulo="Promedio por intervalo"
-            descripcion="Media de cada intervalo con su rango mín–máx. El eje llega hasta la hora actual."
+            titulo={tituloGrafica(intervalo)}
+            descripcion={descripcionGrafica(intervalo)}
           />
 
           {/* 2) En vivo, por minuto (agregado en el navegador). */}
@@ -245,7 +272,7 @@ export function PanelHistorial({
                 series={cubosEnVivo}
                 intervalo="minuto"
                 desde={desdeEnVivo}
-                hasta={fechaHasta}
+                hasta={hastaEnVivo}
                 unidad={unidad}
                 titulo="Evolución de los últimos 30 minutos"
                 descripcion="Media por minuto calculada en el navegador. Se actualiza sola."
@@ -333,4 +360,38 @@ function useSeriesPorCanal(
       cubos: consultas[i]?.data?.series ?? [],
     }))
     .filter((s) => s.cubos.length > 0);
+}
+
+/**
+ * Título del gráfico histórico según el intervalo.
+ *
+ * Deja explícito QUÉ representa cada punto: "Promedio por día", "Promedio por
+ * hora"… Así no hay duda de si un punto es una hora suelta o el promedio de
+ * todo un día.
+ */
+function tituloGrafica(intervalo: string): string {
+  switch (intervalo) {
+    case "minuto":
+      return "Promedio por minuto";
+    case "hora":
+      return "Promedio por hora";
+    case "dia":
+      return "Promedio por día";
+    case "semana":
+      return "Promedio por semana";
+    case "mes":
+      return "Promedio por mes";
+    default:
+      return "Promedio por intervalo";
+  }
+}
+
+/** Descripción del gráfico histórico según el intervalo. */
+function descripcionGrafica(intervalo: string): string {
+  const base =
+    "Cada punto es la media de ese intervalo, con su rango mín–máx.";
+  if (intervalo === "dia") {
+    return `${base} Un punto por día; el eje muestra la fecha.`;
+  }
+  return base;
 }
