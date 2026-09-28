@@ -70,6 +70,42 @@ export interface Sensor {
   activo: boolean;
   configuracion: Record<string, unknown> | null;
   creado_en: string;
+
+  /*
+   * Campos que el backend añade al listar (JOIN con dispositivos, áreas y
+   * tipos de variable). Son opcionales porque no siempre vienen: por ejemplo,
+   * al obtener un sensor recién creado.
+   */
+
+  /** Id del tipo de variable (la magnitud que mide). */
+  tipo_id?: string | null;
+  /** Código del tipo de variable, p. ej. TEMPERATURA. */
+  tipo_codigo?: string | null;
+  /** Nombre legible del tipo, p. ej. "Temperatura". */
+  tipo_nombre?: string | null;
+  /**
+   * Tipo de dato de la magnitud: `numeric`, `boolean`, `text` o `json`.
+   * Determina si se puede representar en un gráfico (ver `sePuedeGraficar`).
+   */
+  tipo_dato?: string | null;
+  /** Unidad por defecto del tipo de variable. */
+  tipo_unidad?: string | null;
+
+  /** Nombre del dispositivo al que pertenece. */
+  dispositivo_nombre?: string | null;
+  /** Identificador del dispositivo. */
+  dispositivo_identificador?: string | null;
+  /** Estado del dispositivo (online/offline). */
+  dispositivo_estado?: string | null;
+  /** Nombre del área del dispositivo. */
+  area_nombre?: string | null;
+
+  /** Último valor numérico registrado. */
+  ultimo_valor_numerico?: number | null;
+  /** Último valor de texto registrado. */
+  ultimo_valor_texto?: string | null;
+  /** Fecha del último registro. */
+  ultimo_registrado_en?: string | null;
 }
 
 /**
@@ -311,6 +347,8 @@ export interface Actuador {
   configuracion: Record<string, unknown> | null;
   creado_en: string;
   dispositivo_nombre?: string | null;
+  /** Área del dispositivo al que pertenece (el backend lo devuelve). */
+  area_id?: string | null;
   area_nombre?: string | null;
 }
 

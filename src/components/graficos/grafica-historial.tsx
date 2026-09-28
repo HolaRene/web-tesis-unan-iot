@@ -46,6 +46,11 @@ interface GraficaHistorialProps {
   unidad?: string;
   titulo?: string;
   descripcion?: string;
+  /**
+   * Color de la línea. Se usa cuando hay varios gráficos en pantalla (uno por
+   * magnitud) para que cada uno se identifique con su color.
+   */
+  colorLinea?: string;
 }
 
 function num(valor: number | null | undefined, decimales = 2): string {
@@ -61,6 +66,7 @@ export function GraficaHistorial({
   unidad = "",
   titulo = "Promedio por intervalo",
   descripcion,
+  colorLinea,
 }: GraficaHistorialProps) {
   const { datos, hayAlgunDato } = useMemo(() => {
     const malla = rellenarMalla(series, intervalo, desde, hasta);
@@ -115,7 +121,18 @@ export function GraficaHistorial({
                   const p = payload[0].payload as (typeof datos)[number];
                   return (
                     <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
-                      <p className="mb-1 font-medium">{p.etiquetaLarga}</p>
+                      {/*
+                        Fecha larga y explícita: incluye el día de la semana y
+                        el mes en palabras. Debajo, el periodo que cubre el
+                        punto, porque cada punto es el PROMEDIO de todo un
+                        intervalo (una hora, un día, un mes…), no un instante.
+                      */}
+                      <p className="mb-0.5 font-medium">{p.etiquetaLarga}</p>
+                      {p.rangoPeriodo ? (
+                        <p className="mb-1 text-muted-foreground">
+                          {p.rangoPeriodo}
+                        </p>
+                      ) : null}
                       {p.media === null ? (
                         <p className="text-muted-foreground">Sin datos</p>
                       ) : (
@@ -166,7 +183,7 @@ export function GraficaHistorial({
                 type="monotone"
                 dataKey="media"
                 name="Media"
-                stroke={COLOR_MEDIA}
+                stroke={colorLinea ?? COLOR_MEDIA}
                 strokeWidth={2}
                 dot={{ r: 2 }}
                 activeDot={{ r: 4 }}

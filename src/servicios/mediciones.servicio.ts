@@ -45,13 +45,22 @@ export async function obtenerSeriesSensor(
   return respuesta.datos;
 }
 
-/** Series agregadas con filtros globales. */
+/**
+ * Series agregadas con filtros globales.
+ *
+ * `tipo_variable_id` es imprescindible al agregar un ÁREA o un DISPOSITIVO con
+ * varias magnitudes: sin él, `avg()` promedia columnas distintas (temperatura
+ * con voltaje, humedad con corriente…) y devuelve un valor sin significado
+ * físico.
+ */
 export async function obtenerSeries(
   filtros: {
     sensor_id?: string;
     canal_id?: string;
     dispositivo_id?: string;
     area_id?: string;
+    /** Magnitud concreta (tipo de variable) a agregar. */
+    tipo_variable_id?: string;
     desde?: string;
     hasta?: string;
     intervalo?: "minuto" | "hora" | "dia" | "semana" | "mes";

@@ -2,22 +2,37 @@
 
 /**
  * Detalle de un sensor (vista) para /sensores/[id].
- * Muestra: información, dispositivo, área, tipo de variable, umbral y un
- * historial bien según el tipo de dato (numérico => LineChart; booleano =>
- * lista de estados; texto => timeline textual; json => pre).
+ *
+ * Muestra la información del sensor, sus magnitudes (con un mini-gráfico de
+ * la última hora cada una) y, debajo, un gráfico por magnitud NUMÉRICA con
+ * selector de periodo.
+ *
+ * Las magnitudes que no son numéricas (booleanas, texto, JSON) NO se grafican:
+ * un eje Y con "on/off" o con texto no significa nada. Se listan indicando el
+ * motivo, en lugar de dejar un gráfico vacío.
  */
+import { useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/servicios/api";
 import { obtenerCanalesDeSensor } from "@/servicios/sensores.servicio";
 import { useEventosMediciones } from "@/hooks/use-eventos-mediciones";
+import { useSeriesPorCanalDetalle } from "@/hooks/useSeriesPorCanalDetalle";
+import { useAhora } from "@/hooks/useAhora";
 import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
-import { PanelHistorial } from "@/components/graficos/panel-historial";
+import { PALETA_CANALES } from "@/configuracion/graficos";
+import { GraficosSensor } from "@/components/graficos/graficos-sensor";
+import { MiniGrafico } from "@/components/graficos/mini-grafico";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { formatearFecha } from "@/utilidades";
+import {
+  formatearFecha,
+  haceTiempo,
+  sePuedeGraficar,
+  motivoNoGraficable,
+} from "@/utilidades";
 
 interface FilaDetalle {
   id: string;
@@ -61,17 +76,6 @@ export function VistaDetalleSensor({ id }: { id: string }) {
     refetchInterval: POLLING_RESPALDO_MS,
   });
 
-  const histQ = useQuery({
-    queryKey: ["sensor-hist", id],
-    queryFn: async () => {
-      const r = await api.obtener<{ mediciones: Array<Record<string, unknown>> }>(
-        `/sensors/${id}/mediciones?limite=200`
-      );
-      return r.datos.mediciones;
-    },
-    refetchInterval: POLLING_RESPALDO_MS,
-  });
-
   // Canales (magnitudes) del sensor: alimentan la comparación del historial.
   const canalesQ = useQuery({
     queryKey: ["canales-sensor", id],
@@ -80,7 +84,6 @@ export function VistaDetalleSensor({ id }: { id: string }) {
 
   const sensor = sensorQ.data;
   const canalesSensor = canalesQ.data ?? [];
-  const tipoDato = (sensor?.tipo_dato ?? "") as string;
 
   return (
     <div className="space-y-5">
@@ -112,24 +115,12 @@ export function VistaDetalleSensor({ id }: { id: string }) {
           <TarjetaMagnitudes sensorId={sensor.id} />
 
           {/*
-            Historial agregado: el backend agrupa en SQL (hora/día/semana/mes)
-            y devuelve media, mín, máx y nº de muestras por intervalo. Se usa
-            para todo tipo de dato numérico; para booleanos/texto se mantiene
-            la lista de lecturas.
+            Gráficos: un chart por cada magnitud NUMÉRICA del sensor, con
+            selector de periodo (última hora, 24 h, 7 días…). Las magnitudes
+            booleanas, de texto o JSON no se grafican: se listan aparte con el
+            motivo, porque un eje Y con "on/off" no significa nada.
           */}
-          {tipoDato.startsWith("numer") ? (
-            <PanelHistorial
-              sensorId={sensor.id}
-              canales={canalesSensor}
-              unidad={sensor.unidad ?? ""}
-            />
-          ) : (
-            <ListaHistorial
-              filas={histQ.data ?? []}
-              tipoDato={tipoDato}
-              unidad={sensor.unidad ?? ""}
-            />
-          )}
+          <GraficosSensor sensorId={sensor.id} canales={canalesSensor} />
         </>
       ) : null}
     </div>
@@ -141,6 +132,52 @@ function TarjetaMagnitudes({ sensorId }: { sensorId: string }) {
     queryKey: ["canales-sensor", sensorId],
     queryFn: () => obtenerCanalesDeSensor(sensorId),
   });
+
+  const canales = useMemo(() => canalesQ.data ?? [], [canalesQ.data]);
+
+  /*
+   * Mini-gráfico por canal: la última hora, agrupada por minuto.
+   * Solo se piden series de los canales NUMÉRICOS. Para un canal booleano o de
+   * texto el backend devolvería una serie vacía (agrupa con `avg()`), así que
+   * el mini-gráfico saldría en blanco sin explicar por qué.
+   */
+  const numericos = useMemo(
+    () => canales.filter((c) => sePuedeGraficar(c.tipo_dato)),
+    [canales]
+  );
+
+  const ahora = useAhora(60_000);
+  const desdeUltimaHora = useMemo(
+    () => new Date(ahora.getTime() - 60 * 60_000).toISOString(),
+    [ahora]
+  );
+
+  const series = useSeriesPorCanalDetalle(
+    sensorId,
+    numericos,
+    "minuto",
+    desdeUltimaHora,
+    ahora.toISOString()
+  );
+
+  const seriesPorCanalId = useMemo(() => {
+    const mapa = new Map<string, Array<{ instante: string; media: number | null }>>();
+    for (const s of series) {
+      mapa.set(
+        s.canal.id,
+        s.cubos.map((c) => ({ instante: c.cubo, media: c.media }))
+      );
+    }
+    return mapa;
+  }, [series]);
+
+  const colorPorCanalId = useMemo(() => {
+    const mapa = new Map<string, string>();
+    numericos.forEach((canal, i) => {
+      mapa.set(canal.id, PALETA_CANALES[i % PALETA_CANALES.length]);
+    });
+    return mapa;
+  }, [numericos]);
 
   return (
     <Card>
@@ -159,40 +196,98 @@ function TarjetaMagnitudes({ sensorId }: { sensorId: string }) {
             <AlertTitle>Error al cargar magnitudes</AlertTitle>
             <AlertDescription>{(canalesQ.error as Error).message}</AlertDescription>
           </Alert>
-        ) : (canalesQ.data ?? []).length === 0 ? (
+        ) : canales.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Este sensor no tiene magnitudes registradas.
           </p>
         ) : (
           <ul className="divide-y">
-            {(canalesQ.data ?? []).map((canal) => (
-              <li
-                key={canal.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{canal.nombre}</p>
-                  <p className="text-xs text-muted-foreground">
-                    <code>{canal.codigo}</code>
-                    {canal.unidad ? ` · ${canal.unidad}` : ""}
-                    {canal.rango_min !== null && canal.rango_max !== null
-                      ? ` · rango ${canal.rango_min}…${canal.rango_max}`
-                      : ""}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={canal.activo ? "secondary" : "outline"}>
-                    {canal.activo ? "Activo" : "Inactivo"}
-                  </Badge>
-                  <Link
-                    href={`/canales/${canal.id}`}
-                    className="text-xs text-primary underline-offset-4 hover:underline"
-                  >
-                    Ver canal
-                  </Link>
-                </div>
-              </li>
-            ))}
+            {canales.map((canal) => {
+              const graficable = sePuedeGraficar(canal.tipo_dato);
+              const puntos = seriesPorCanalId.get(canal.id) ?? [];
+
+              return (
+                <li key={canal.id} className="py-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{canal.nombre}</p>
+                      <p className="text-xs text-muted-foreground">
+                        <code>{canal.codigo}</code>
+                        {canal.unidad ? ` · ${canal.unidad}` : ""}
+                        {canal.rango_min !== null && canal.rango_max !== null
+                          ? ` · rango ${canal.rango_min}…${canal.rango_max}`
+                          : ""}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Badge variant={canal.activo ? "secondary" : "outline"}>
+                        {canal.activo ? "Activo" : "Inactivo"}
+                      </Badge>
+                      <Link
+                        href={`/canales/${canal.id}`}
+                        className="text-xs text-primary underline-offset-4 hover:underline"
+                      >
+                        Ver canal
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/*
+                    Último dato de la magnitud, con su fecha.
+
+                    El backend ya devuelve `ultimo_valor_*`, `ultimo_registrado_en`
+                    y `cantidad_mediciones` en cada canal; antes no se mostraban.
+                    La fecha se da en dos formatos: absoluta (para saber cuándo
+                    fue exactamente) y relativa ("hace 3 h", para saber si el
+                    dato está fresco de un vistazo).
+                  */}
+                  <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <UltimoDatoCanal canal={canal} />
+
+                    {canal.ultimo_registrado_en ? (
+                      <span
+                        className="text-xs text-muted-foreground"
+                        title={formatearFecha(canal.ultimo_registrado_en)}
+                      >
+                        · {formatearFecha(canal.ultimo_registrado_en)} (
+                        {haceTiempo(canal.ultimo_registrado_en)})
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        · Sin mediciones todavía
+                      </span>
+                    )}
+
+                    {typeof canal.cantidad_mediciones === "number" ? (
+                      <span className="text-xs text-muted-foreground">
+                        · {canal.cantidad_mediciones} mediciones
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/*
+                    Mini-gráfico de la última hora, solo para magnitudes
+                    numéricas. Para el resto se explica por qué no hay gráfico.
+                  */}
+                  {graficable ? (
+                    <div className="mt-2">
+                      <MiniGrafico
+                        datos={puntos}
+                        color={colorPorCanalId.get(canal.id)}
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Última hora
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Sin gráfico: {motivoNoGraficable(canal.tipo_dato)}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>
@@ -256,52 +351,57 @@ function ResumenUltimo({ sensor }: { sensor: FilaDetalle }) {
   );
 }
 
-
-function ListaHistorial({
-  filas,
-  tipoDato,
-  unidad,
+/**
+ * Último valor registrado de un canal.
+ *
+ * Un canal puede guardar su valor en tres columnas distintas según su tipo:
+ *
+ *   - `ultimo_valor_numerico` → magnitudes continuas (temperatura, voltaje…)
+ *   - `ultimo_valor_texto`    → estados de texto ("ok", "error"…)
+ *   - `ultimo_valor_booleano` → estados on/off
+ *
+ * Hay que mirar las tres: una magnitud booleana con valor `false` es un dato
+ * válido, y comprobarlo con `if (valor)` lo mostraría como "sin datos".
+ */
+function UltimoDatoCanal({
+  canal,
 }: {
-  filas: Array<Record<string, unknown>>;
-  tipoDato: string;
-  unidad: string;
+  canal: {
+    unidad?: string | null;
+    tipo_dato?: string | null;
+    ultimo_valor_numerico?: number | null;
+    ultimo_valor_texto?: string | null;
+    ultimo_valor_booleano?: boolean | null;
+  };
 }) {
+  const { ultimo_valor_numerico: numero, ultimo_valor_texto: texto } = canal;
+  const booleano = canal.ultimo_valor_booleano;
+
+  // Numérico
+  if (numero !== null && numero !== undefined) {
+    return (
+      <span className="text-sm font-medium">
+        {numero}
+        {canal.unidad ? ` ${canal.unidad}` : ""}
+      </span>
+    );
+  }
+
+  // Booleano: `false` es un valor, no ausencia de dato.
+  if (booleano !== null && booleano !== undefined) {
+    return (
+      <span className="text-sm font-medium">
+        {booleano ? "Activo / On" : "Inactivo / Off"}
+      </span>
+    );
+  }
+
+  // Texto
+  if (texto) {
+    return <span className="text-sm font-medium">{texto}</span>;
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">
-          Historial {tipoDato.startsWith("bool") ? "booleano" : "texto"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {(filas as Array<{ valor_texto?: string | null; valor_booleano?: boolean | null; registrado_en: string }>).length ===
-        0 ? (
-          <p className="text-muted-foreground">Sin registros.</p>
-        ) : (
-          <ul className="space-y-1 text-sm">
-            {(filas as Array<{ valor_texto?: string | null; valor_booleano?: boolean | null; registrado_en: string }>).map(
-              (m, idx) => (
-                <li key={idx} className="flex gap-3 border-b py-1 last:border-0">
-                  <span className="text-muted-foreground">
-                    {formatearFecha(m.registrado_en)}
-                  </span>{" "}
-                  <span className="font-medium">
-                    {((v) =>
-                      typeof v === "boolean"
-                        ? v
-                          ? "Activo / On"
-                          : "Inactivo / Off"
-                        : v
-                        ? String(v)
-                        : "—")(m.valor_texto ?? m.valor_booleano)}
-                  </span>
-                  {unidad}
-                </li>
-              )
-            )}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+    <span className="text-sm text-muted-foreground">Sin valor registrado</span>
   );
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PaginaEnConstruccion } from "@/components/compartidos/pagina-en-construccion";
+import { VistaDetalleArea } from "@/components/areas/vista-detalle-area";
 
 interface PaginaAreaDetalleProps {
   params: Promise<{ id: string }>;
@@ -16,17 +16,5 @@ export default async function PaginaAreaDetalle({
   params,
 }: PaginaAreaDetalleProps) {
   const { id } = await params;
-
-  return (
-    <PaginaEnConstruccion
-      titulo={`Detalle del área`}
-      descripcion={`Información detallada del área con id «${id}»: dispositivos, sensores, mediciones, gráficas, alertas y cámaras asociadas.`}
-      pendientes={[
-        "Ficha de información del área.",
-        "Listado de dispositivos y sensores del área.",
-        "Últimas mediciones y gráficas.",
-        "Alertas y cámaras asociadas.",
-      ]}
-    />
-  );
+  return <VistaDetalleArea id={id} />;
 }

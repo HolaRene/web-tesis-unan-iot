@@ -6,9 +6,22 @@
 import { api } from "./api";
 import type { Dispositivo } from "@/tipos";
 
-/** Lista todos los dispositivos. */
-export async function listarDispositivos(): Promise<Dispositivo[]> {
-  const respuesta = await api.obtener<Dispositivo[]>("/devices");
+/**
+ * Lista dispositivos, opcionalmente filtrados por área.
+ *
+ * El backend acepta `area_id` en el query string, así que el filtrado se hace
+ * en SQL y no en el navegador (importante cuando hay muchos dispositivos).
+ */
+export async function listarDispositivos(
+  filtros: { area_id?: string } = {}
+): Promise<Dispositivo[]> {
+  const p = new URLSearchParams();
+  if (filtros.area_id) p.set("area_id", filtros.area_id);
+  const qs = p.toString();
+
+  const respuesta = await api.obtener<Dispositivo[]>(
+    `/devices${qs ? `?${qs}` : ""}`
+  );
   return respuesta.datos;
 }
 

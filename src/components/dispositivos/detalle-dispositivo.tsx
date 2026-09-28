@@ -65,7 +65,7 @@ export function DetalleDispositivo({ id }: { id: string }) {
     refetchInterval: POLLING_RESPALDO_MS,
   });
 
-  const sensoresQ = useQuery({ queryKey: ["sensores"], queryFn: listarSensores });
+  const sensoresQ = useQuery({ queryKey: ["sensores"], queryFn: () => listarSensores() });
   const actuadoresQ = useQuery({
     queryKey: ["actuadores"],
     queryFn: listarActuadores,

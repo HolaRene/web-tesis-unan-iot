@@ -20,8 +20,16 @@ export interface PuntoTemporal {
   instante: string;
   /** Etiqueta corta para el eje X. */
   etiqueta: string;
-  /** Etiqueta completa para el tooltip. */
+  /** Etiqueta completa para el tooltip (con día de la semana y fecha larga). */
   etiquetaLarga: string;
+  /**
+   * Periodo que cubre el punto, p. ej. "14:00 – 14:59" o "todo el día".
+   *
+   * Un punto NO es un instante: es el promedio de todo un periodo. Sin este
+   * texto, un punto de la agrupación "por mes" parecería ser un dato del día
+   * que aparece en la fecha.
+   */
+  rangoPeriodo: string;
   media: number | null;
   minimo: number | null;
   maximo: number | null;
@@ -186,53 +194,99 @@ export function estimarPuntos(
 /**
  * Etiquetas del eje X y del tooltip según el intervalo.
  *
- * `abarcaVariosDias` resuelve un problema de lectura: con intervalo "por hora"
- * sobre 7 días, el eje mostraba solo "14:00" repetido y no se sabía de qué día
- * era cada punto. Cuando el rango cruza varios días, la etiqueta incluye el
- * día ("24 sep 14:00").
+ * Devuelve DOS cosas con propósitos distintos:
  *
- * Con intervalo "por día" la etiqueta es SIEMPRE la fecha del día, porque cada
- * punto representa el promedio completo de ese día (no una hora concreta).
+ *   - `etiqueta`: texto corto para el EJE X. Debe caber; si el rango cruza
+ *     varios días, incluye el día ("24 sep 14:00") para no ser ambiguo.
+ *   - `etiquetaLarga`: texto completo para el TOOLTIP, donde hay espacio.
+ *     Describe el periodo con precisión ("lunes, 28 de septiembre de 2026,
+ *     14:00"), incluye el rango que abarca ("14:00 – 14:59") y nombra
+ *     correctamente semanas y meses.
+ *
+ * `rangoPeriodo` es el texto del intervalo que cubre el punto. Es importante
+ * porque cada punto NO es un instante, sino el promedio de todo un periodo:
+ * sin él, un punto de "septiembre" parecería ser un dato del día 28.
+ *
+ * `abarcaVariosDias` solo afecta a la etiqueta CORTA del eje (minutos/horas).
  */
 export function etiquetas(
   fecha: Date,
   intervalo: string,
   abarcaVariosDias = false
-): { etiqueta: string; etiquetaLarga: string } {
+): { etiqueta: string; etiquetaLarga: string; rangoPeriodo: string } {
   const p = (n: number) => String(n).padStart(2, '0');
   const meses = [
     'ene', 'feb', 'mar', 'abr', 'may', 'jun',
     'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
   ];
+  const mesesLargos = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+  ];
+  const diasLargos = [
+    'domingo', 'lunes', 'martes', 'miércoles',
+    'jueves', 'viernes', 'sábado',
+  ];
 
   const hora = `${p(fecha.getHours())}:${p(fecha.getMinutes())}`;
   const dia = `${fecha.getDate()} ${meses[fecha.getMonth()]}`;
-  const larga = `${dia} ${fecha.getFullYear()} ${hora}`;
+  const anio = fecha.getFullYear();
+  const diaLargo = `${fecha.getDate()} de ${mesesLargos[fecha.getMonth()]} de ${anio}`;
+
+  /** Suma minutos y devuelve "HH:mm". Se usa para el fin del periodo. */
+  const sumarMinutos = (min: number) => {
+    const d = new Date(fecha);
+    d.setMinutes(d.getMinutes() + min);
+    return `${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
 
   switch (intervalo) {
     case 'minuto':
       return {
-        // En la vista en vivo (minutos) basta la hora si es el mismo día.
         etiqueta: abarcaVariosDias ? `${dia} ${hora}` : hora,
-        etiquetaLarga: larga,
+        etiquetaLarga: `${diasLargos[fecha.getDay()]}, ${diaLargo}, ${hora}`,
+        rangoPeriodo: `${hora} – ${sumarMinutos(1)}`,
       };
+
     case 'hora':
       return {
         etiqueta: abarcaVariosDias ? `${dia} ${hora}` : hora,
-        etiquetaLarga: larga,
+        etiquetaLarga: `${diasLargos[fecha.getDay()]}, ${diaLargo}, ${hora}`,
+        rangoPeriodo: `${hora} – ${sumarMinutos(59)}`,
       };
+
     case 'dia':
-      // Cada punto es el promedio de un día completo: se etiqueta con la fecha.
-      return { etiqueta: dia, etiquetaLarga: `${dia} ${fecha.getFullYear()}` };
-    case 'semana':
-      return { etiqueta: `Sem ${semanaDelAno(fecha)}`, etiquetaLarga: larga };
+      return {
+        etiqueta: dia,
+        etiquetaLarga: `${diasLargos[fecha.getDay()]}, ${diaLargo}`,
+        rangoPeriodo: 'todo el día',
+      };
+
+    case 'semana': {
+      // Semana que empieza en lunes: se muestra el intervalo completo.
+      const fin = new Date(fecha);
+      fin.setDate(fin.getDate() + 6);
+      const finTexto = `${fin.getDate()} ${meses[fin.getMonth()]}`;
+      return {
+        etiqueta: `Sem ${semanaDelAno(fecha)}`,
+        etiquetaLarga: `Semana del ${dia} al ${finTexto} de ${fin.getFullYear()}`,
+        rangoPeriodo: `del ${dia} al ${finTexto}`,
+      };
+    }
+
     case 'mes':
       return {
-        etiqueta: `${meses[fecha.getMonth()]} ${String(fecha.getFullYear()).slice(2)}`,
-        etiquetaLarga: larga,
+        etiqueta: `${meses[fecha.getMonth()]} ${String(anio).slice(2)}`,
+        etiquetaLarga: `${mesesLargos[fecha.getMonth()]} de ${anio}`,
+        rangoPeriodo: `${mesesLargos[fecha.getMonth()]} completo`,
       };
+
     default:
-      return { etiqueta: hora, etiquetaLarga: larga };
+      return {
+        etiqueta: hora,
+        etiquetaLarga: `${diaLargo}, ${hora}`,
+        rangoPeriodo: `${hora} – ${sumarMinutos(59)}`,
+      };
   }
 }
 

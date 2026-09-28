@@ -16,9 +16,16 @@ export type DatosSensor = Partial<Sensor> & {
   canales?: MagnitudSensor[];
 };
 
-/** Lista todos los sensores. */
-export async function listarSensores(): Promise<Sensor[]> {
-  const respuesta = await api.obtener<Sensor[]>("/sensors");
+/** Lista sensores, opcionalmente filtrados por área o dispositivo (en SQL). */
+export async function listarSensores(
+  filtros: { area_id?: string; dispositivo_id?: string } = {}
+): Promise<Sensor[]> {
+  const p = new URLSearchParams();
+  if (filtros.area_id) p.set("area_id", filtros.area_id);
+  if (filtros.dispositivo_id) p.set("dispositivo_id", filtros.dispositivo_id);
+  const qs = p.toString();
+
+  const respuesta = await api.obtener<Sensor[]>(`/sensors${qs ? `?${qs}` : ""}`);
   return respuesta.datos;
 }
 

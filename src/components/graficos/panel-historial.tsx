@@ -56,6 +56,7 @@ import {
 } from "@/configuracion/graficos";
 
 import { useAhora } from "@/hooks/useAhora";
+import { sePuedeGraficar } from "@/utilidades/magnitudes";
 import type { Canal } from "@/tipos";
 
 interface PanelHistorialProps {
@@ -154,9 +155,17 @@ export function PanelHistorial({
   /*
    * Comparación de canales: una consulta por canal. Si la vista ya está
    * enfocada en un canal concreto, no se compara (sería redundante).
+   *
+   * `sePuedeGraficar` comprueba el tipo REAL que devuelve el backend
+   * (`numeric`, en inglés). Antes se comparaba contra "booleano", que nunca
+   * coincidía, así que se intentaban graficar canales booleanos y el
+   * resultado era un gráfico vacío.
    */
   const canalesNumericos = useMemo(
-    () => (canalId ? [] : canales.filter((c) => c.tipo_dato !== "booleano")),
+    () =>
+      canalId
+        ? []
+        : canales.filter((c) => sePuedeGraficar(c.tipo_dato)),
     [canales, canalId]
   );
 

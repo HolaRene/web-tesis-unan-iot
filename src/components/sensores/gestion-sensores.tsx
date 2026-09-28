@@ -12,6 +12,7 @@
  *   GET /sensors/:id/canales  (magnitudes del sensor)
  * Crear/editar/eliminar exige rol `usuario` o `admin` (`viewer` sólo lee).
  */
+import Link from "next/link";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -350,13 +351,24 @@ function FormularioSensor({
 }
 
 function Acciones({
+  hrefDetalle,
+  puedeEscribir,
   onEditar,
   onBorrar,
 }: {
+  hrefDetalle: string;
+  puedeEscribir: boolean;
   onEditar: () => void;
   onBorrar: () => void;
 }) {
-  return <AccionesFila alEditar={onEditar} alEliminar={onBorrar} />;
+  return (
+    <AccionesFila
+      hrefDetalle={hrefDetalle}
+      // `AccionesFila` omite editar/eliminar si no recibe el manejador.
+      alEditar={puedeEscribir ? onEditar : undefined}
+      alEliminar={puedeEscribir ? onBorrar : undefined}
+    />
+  );
 }
 
 export function GestionSensores() {
@@ -364,8 +376,8 @@ export function GestionSensores() {
   const { usuario } = useSesion();
   const puedeEscribir = usuario?.rol === "usuario" || usuario?.rol === "admin";
 
-  const sensores = useQuery({ queryKey: ["sensores"], queryFn: listarSensores });
-  const dispQuery = useQuery({ queryKey: ["dispositivos"], queryFn: listarDispositivos });
+  const sensores = useQuery({ queryKey: ["sensores"], queryFn: () => listarSensores() });
+  const dispQuery = useQuery({ queryKey: ["dispositivos"], queryFn: () => listarDispositivos() });
   const tiposQuery = useQuery({ queryKey: ["tipos-variable"], queryFn: listarTiposVariable });
   const dispositivos = dispQuery.data ?? [];
   const tipos = tiposQuery.data ?? [];
@@ -516,13 +528,21 @@ export function GestionSensores() {
                   <TableHead>Código</TableHead>
                   <TableHead>Tipo / modelo</TableHead>
                   <TableHead>Estado</TableHead>
-                  {puedeEscribir && <TableHead className="w-20" />}
+                  {/* Siempre visible: incluye el enlace "Ver detalle". */}
+                  <TableHead className="w-20" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filas.map((s) => (
                   <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.nombre}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/sensores/${s.id}`}
+                        className="hover:underline"
+                      >
+                        {s.nombre}
+                      </Link>
+                    </TableCell>
                     <TableCell>{s.codigo}</TableCell>
                     <TableCell>
                       {[s.fabricante, s.modelo].filter(Boolean).join(" ") || "—"}
@@ -532,17 +552,17 @@ export function GestionSensores() {
                         {s.activo ? "Activo" : "Inactivo"}
                       </Badge>
                     </TableCell>
-                    {puedeEscribir && (
-                      <TableCell>
-                        <Acciones
-                          onEditar={() => {
-                            setEditar(s);
-                            setAbrir(true);
-                          }}
-                          onBorrar={() => setBorrar(s)}
-                        />
-                      </TableCell>
-                    )}
+                    <TableCell>
+                      <Acciones
+                        hrefDetalle={`/sensores/${s.id}`}
+                        puedeEscribir={puedeEscribir}
+                        onEditar={() => {
+                          setEditar(s);
+                          setAbrir(true);
+                        }}
+                        onBorrar={() => setBorrar(s)}
+                      />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -10,6 +10,7 @@
  * Los POST/PATCH/DELETE requieren rol `usuario` o `admin`; un `viewer` ve la
  * lista en modo lectura.
  */
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -190,15 +191,24 @@ function FormularioArea({
 
 interface AccionesProps {
   area: Area;
+  /** Si el rol puede modificar: sin esto solo se ofrece "Ver detalle". */
+  puedeEscribir: boolean;
   onEditar: (area: Area) => void;
   onBorrar: (area: Area) => void;
 }
 
-function AreaAcciones({ area, onEditar, onBorrar }: AccionesProps) {
+function AreaAcciones({
+  area,
+  puedeEscribir,
+  onEditar,
+  onBorrar,
+}: AccionesProps) {
   return (
     <AccionesFila
-      alEditar={() => onEditar(area)}
-      alEliminar={() => onBorrar(area)}
+      hrefDetalle={`/areas/${area.id}`}
+      // `AccionesFila` omite editar/eliminar cuando no recibe el manejador.
+      alEditar={puedeEscribir ? () => onEditar(area) : undefined}
+      alEliminar={puedeEscribir ? () => onBorrar(area) : undefined}
     />
   );
 }
@@ -354,13 +364,28 @@ export function GestionAreas() {
                   <TableHead>Tipo</TableHead>
                   <TableHead>Ubicación</TableHead>
                   <TableHead>Estado</TableHead>
-                  {puedeEscribir && <TableHead className="w-12" />}
+                  {/*
+                    La columna de acciones SIEMPRE se muestra: aunque el rol sea
+                    de solo lectura, incluye el enlace "Ver detalle".
+                  */}
+                  <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filas.map((area) => (
                   <TableRow key={area.id}>
-                    <TableCell className="font-medium">{area.nombre}</TableCell>
+                    <TableCell className="font-medium">
+                      {/*
+                        El nombre enlaza al detalle del área. Es la forma más
+                        natural de llegar: se hace clic en el nombre.
+                      */}
+                      <Link
+                        href={`/areas/${area.id}`}
+                        className="hover:underline"
+                      >
+                        {area.nombre}
+                      </Link>
+                    </TableCell>
                     <TableCell>{area.tipo ?? "—"}</TableCell>
                     <TableCell>{area.ubicacion ?? "—"}</TableCell>
                     <TableCell>
@@ -368,15 +393,20 @@ export function GestionAreas() {
                         {area.activo ? "Activa" : "Inactiva"}
                       </Badge>
                     </TableCell>
-                    {puedeEscribir && (
-                      <TableCell>
-                        <AreaAcciones
-                          area={area}
-                          onEditar={abrirEditar}
-                          onBorrar={() => setBorrar(area)}
-                        />
-                      </TableCell>
-                    )}
+                    {/*
+                      Las acciones se muestran siempre. Editar y eliminar solo
+                      aparecen si el rol lo permite (`AccionesFila` los omite
+                      cuando no recibe los manejadores); el enlace al detalle
+                      está disponible para cualquier rol.
+                    */}
+                    <TableCell>
+                      <AreaAcciones
+                        area={area}
+                        puedeEscribir={puedeEscribir}
+                        onEditar={abrirEditar}
+                        onBorrar={() => setBorrar(area)}
+                      />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

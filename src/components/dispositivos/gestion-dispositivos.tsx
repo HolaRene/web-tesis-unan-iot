@@ -292,7 +292,7 @@ export function GestionDispositivos() {
 
   const dispositivos = useQuery({
     queryKey: ["dispositivos"],
-    queryFn: listarDispositivos,
+    queryFn: () => listarDispositivos(),
     // Polling de RESPALDO: con WebSocket activo ya no hace falta cada 15 s.
     // Se deja muy poco frecuente por si la conexión WS cae.
     refetchInterval: POLLING_RESPALDO_MS,

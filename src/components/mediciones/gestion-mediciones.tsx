@@ -46,7 +46,7 @@ export default function GestionMediciones() {
 
   const sensoresQuery = useQuery({
     queryKey: ["sensores"],
-    queryFn: listarSensores,
+    queryFn: () => listarSensores(),
   });
   const sensores = sensoresQuery.data ?? [];
   const sensorPorId = new Map(sensores.map((s) => [s.id, s]));

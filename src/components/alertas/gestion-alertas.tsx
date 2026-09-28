@@ -52,7 +52,14 @@ export default function GestionAlertas() {
   const { reconocer, resolver, eliminar } = useMutacionesAlertas();
 
   // Etiqueta legible del sensor (en lugar del UUID).
-  const sensoresQ = useQuery({ queryKey: ["sensores-labels"], queryFn: listarSensores });
+  //
+  // Nota: se envuelve en una flecha a propósito. Pasar `listarSensores`
+  // directamente haría que TanStack le inyectara su objeto de contexto como
+  // primer argumento (que ahora es el de filtros).
+  const sensoresQ = useQuery({
+    queryKey: ["sensores-labels"],
+    queryFn: () => listarSensores(),
+  });
   const sensorById = new Map((sensoresQ.data ?? []).map((s) => [s.id, s]));
   const etiquetaSensor = (id: string | null) =>
     id

@@ -32,7 +32,7 @@ export function HistorialMediciones() {
 
   const sensoresQuery = useQuery({
     queryKey: ["sensores-labels"],
-    queryFn: listarSensores,
+    queryFn: () => listarSensores(),
   });
   const porId = new Map(
     (sensoresQuery.data ?? []).map((s) => [s.id, s])
