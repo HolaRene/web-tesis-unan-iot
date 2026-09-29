@@ -11,6 +11,7 @@ import {
   MapPin,
   PlugZap,
   RadioTower,
+  ToggleRight,
   type LucideIcon,
 } from "lucide-react";
 
@@ -29,6 +30,7 @@ export const itemsNavegacionPanel: ItemNavegacion[] = [
   { href: "/canales", etiqueta: "Canales", icono: Gauge },
   { href: "/mediciones", etiqueta: "Mediciones", icono: Activity },
   { href: "/alertas", etiqueta: "Alertas", icono: AlertTriangle },
+  { href: "/actuadores", etiqueta: "Actuadores", icono: ToggleRight },
   { href: "/camaras", etiqueta: "Cámaras", icono: Camera },
   { href: "/integraciones", etiqueta: "Integraciones", icono: PlugZap },
 ];

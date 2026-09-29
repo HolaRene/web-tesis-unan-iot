@@ -426,3 +426,50 @@ export interface IotAlerta {
 
 
 
+
+/**
+ * Comando enviado a un actuador.
+ *
+ * Recorre un ciclo de vida hasta llegar al equipo físico:
+ *
+ *     pendiente → enviado → ejecutado
+ *                    └──────→ fallido
+ *
+ * `pendiente` es el estado en el que lo deja la web. A partir de ahí lo
+ * actualiza Node-RED, que confirma la entrega ('enviado') y, si el equipo
+ * responde, la ejecución ('ejecutado').
+ */
+export type EstadoComando =
+  | "pendiente"
+  | "enviado"
+  | "ejecutado"
+  | "fallido"
+  | "cancelado";
+
+export interface ComandoActuador {
+  id: string;
+  actuador_id: string;
+  usuario_id: string | null;
+  clave_api_id: string | null;
+  comando: string;
+  valor: Record<string, unknown> | null;
+  estado: EstadoComando;
+  creado_en: string;
+  enviado_en: string | null;
+  ejecutado_en: string | null;
+  respuesta: Record<string, unknown> | null;
+  metadatos: Record<string, unknown> | null;
+
+  /* Relaciones que añade el backend al consultar. */
+  actuador_codigo?: string | null;
+  actuador_nombre?: string | null;
+  /** Tema MQTT de destino. Si es null, se deriva del código del actuador. */
+  actuador_topico_mqtt?: string | null;
+  actuador_estado_actual?: string | null;
+  actuador_tipo?: string | null;
+  dispositivo_id?: string | null;
+  dispositivo_nombre?: string | null;
+  dispositivo_identificador?: string | null;
+  area_nombre?: string | null;
+  clave_api_nombre?: string | null;
+}
