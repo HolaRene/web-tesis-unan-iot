@@ -68,13 +68,27 @@ export function GraficaHistorial({
   descripcion,
   colorLinea,
 }: GraficaHistorialProps) {
-  const { datos, hayAlgunDato } = useMemo(() => {
+  const { datos, hayAlgunDato, totalMuestras } = useMemo(() => {
     const malla = rellenarMalla(series, intervalo, desde, hasta);
     return {
       datos: malla,
       hayAlgunDato: malla.some((p) => p.media !== null),
+      /*
+       * Suma de las mediciones que hay DETRÁS de los puntos dibujados.
+       *
+       * Sirve para distinguir "no llegaron datos" de "llegaron muchos y se
+       * agruparon". Sin este dato, ver un solo punto y 50 mediciones parece
+       * un fallo cuando en realidad la agrupación hizo su trabajo.
+       */
+      totalMuestras: malla.reduce((acc, p) => acc + (p.muestras ?? 0), 0),
     };
   }, [series, intervalo, desde, hasta]);
+
+  /** Puntos realmente dibujados (los que tienen datos). */
+  const puntosConDato = useMemo(
+    () => datos.filter((p) => p.media !== null).length,
+    [datos]
+  );
 
   // Índice del último cubo con datos y del cubo en curso (para marcar).
   const instanteActual = useMemo(
@@ -88,6 +102,21 @@ export function GraficaHistorial({
         <CardTitle className="text-base">{titulo}</CardTitle>
         {descripcion && (
           <p className="text-xs text-muted-foreground">{descripcion}</p>
+        )}
+        {/*
+          Aviso de agrupación: cuántas mediciones hay detrás de los puntos.
+          Si el número de mediciones es mucho mayor que el de puntos, es que
+          se están promediando (normal), no que falten datos.
+        */}
+        {hayAlgunDato && (
+          <p className="text-xs text-muted-foreground">
+            {totalMuestras} medición{totalMuestras === 1 ? "" : "es"}
+            {totalMuestras !== puntosConDato
+              ? ` agrupadas en ${puntosConDato} punto${
+                  puntosConDato === 1 ? "" : "s"
+                }`
+              : ` en ${puntosConDato} punto${puntosConDato === 1 ? "" : "s"}`}
+          </p>
         )}
       </CardHeader>
       <CardContent>

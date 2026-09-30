@@ -1,6 +1,7 @@
 // src/servicios/medicionService.ts
 import { api } from "./api";
 import type { Medicion, SeriesAgregadas } from "@/tipos";
+import type { IntervaloAgregacion } from "@/configuracion/graficos";
 
 /** Filtros para la consulta de mediciones. */
 export interface FiltrosMediciones {
@@ -15,7 +16,7 @@ export interface FiltrosMediciones {
 
 /** Opciones de la consulta de series agregadas. */
 export interface OpcionesSeries {
-  intervalo?: "minuto" | "hora" | "dia" | "semana" | "mes";
+  intervalo?: IntervaloAgregacion;
   canal_id?: string;
   desde?: string;
   hasta?: string;
@@ -63,7 +64,7 @@ export async function obtenerSeries(
     tipo_variable_id?: string;
     desde?: string;
     hasta?: string;
-    intervalo?: "minuto" | "hora" | "dia" | "semana" | "mes";
+    intervalo?: IntervaloAgregacion;
     limite?: number;
   } = {}
 ): Promise<SeriesAgregadas> {

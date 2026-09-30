@@ -129,6 +129,23 @@ export function rellenarMalla(
   hasta: Date,
   limite = 2000
 ): PuntoTemporal[] {
+  /*
+   * Sin agrupar: NO se rellena la malla.
+   *
+   * Cada cubo es una medición real con su marca de tiempo exacta. Inventar
+   * puntos intermedios vacíos no tendría sentido: el hueco entre dos
+   * mediciones es el intervalo de muestreo (p. ej. 2 s), no una falta de
+   * datos. Además, truncar a minutos colapsaría varias mediciones en el mismo
+   * instante y `porInstante` se quedaría solo con la última, que es
+   * exactamente el fallo que `sin_agrupar` viene a resolver.
+   */
+  if (intervalo === 'sin_agrupar') {
+    return cubos
+      .map((c) => aPunto(c, intervalo, true))
+      .sort((a, b) => (a.instante < b.instante ? -1 : 1))
+      .slice(0, limite);
+  }
+
   // Índice por instante truncado para localizar cada cubo en O(1).
   const porInstante = new Map<number, CuboEntrada>();
   for (const c of cubos) {

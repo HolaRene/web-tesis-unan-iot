@@ -5,8 +5,22 @@
  * las vistas de sensor y de canal compartan exactamente las mismas opciones.
  */
 
-/** Intervalo de agrupación admitido por el backend. */
-export type IntervaloAgregacion = "minuto" | "hora" | "dia" | "semana" | "mes";
+/**
+ * Intervalo de agrupación admitido por el backend.
+ *
+ * `sin_agrupar` es especial: devuelve UNA fila por medición, sin promediar.
+ * Sirve cuando el equipo muestrea más rápido que el cubo (p. ej. cada 2 s con
+ * cubos de 1 minuto): agrupando, decenas de mediciones se funden en un solo
+ * punto y el gráfico parece tener un dato suelto, como si el sensor se hubiera
+ * desconectado.
+ */
+export type IntervaloAgregacion =
+  | "minuto"
+  | "hora"
+  | "dia"
+  | "semana"
+  | "mes"
+  | "sin_agrupar";
 
 /**
  * Milisegundos entre refrescos de la vista "en vivo" (chart por minuto).
@@ -29,7 +43,23 @@ export const INTERVALOS: OpcionIntervalo[] = [
   { valor: "dia", etiqueta: "Por día", formatoEje: "dd MMM" },
   { valor: "semana", etiqueta: "Por semana", formatoEje: "'Sem' w" },
   { valor: "mes", etiqueta: "Por mes", formatoEje: "MMM yyyy" },
+  /*
+   * Al final y con etiqueta explícita: es la opción para depurar cuando el
+   * muestreo es más rápido que la agrupación.
+   */
+  { valor: "sin_agrupar", etiqueta: "Sin agrupar", formatoEje: "HH:mm:ss" },
 ];
+
+/**
+ * ¿Este intervalo devuelve datos crudos (una fila por medición)?
+ *
+ * Con `sin_agrupar` no se debe rellenar la malla temporal: cada punto es una
+ * medición real, y los huecos entre ellas son el intervalo de muestreo, no
+ * una falta de datos.
+ */
+export function esSinAgrupar(intervalo: string): boolean {
+  return intervalo === "sin_agrupar";
+}
 
 /** Rango temporal predefinido. */
 export interface OpcionRango {

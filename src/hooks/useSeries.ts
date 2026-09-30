@@ -14,6 +14,7 @@ import {
   type OpcionesSeries,
 } from "@/servicios/mediciones.servicio";
 import type { CuboSerie } from "@/tipos";
+import type { IntervaloAgregacion } from "@/configuracion/graficos";
 
 /** Claves de caché del módulo de series. */
 export const CLAVES_SERIES = {
@@ -103,7 +104,7 @@ export function useSeries(
     area_id?: string;
     desde?: string;
     hasta?: string;
-    intervalo?: "minuto" | "hora" | "dia" | "semana" | "mes";
+    intervalo?: IntervaloAgregacion;
     limite?: number;
   } = {},
   habilitado = true
