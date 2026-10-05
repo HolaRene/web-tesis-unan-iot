@@ -17,7 +17,15 @@
  * la URL pública de MediaMTX que recibe por props.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Video, VideoOff, Loader2, RefreshCw, AlertTriangle } from "lucide-react";
+import {
+  Video,
+  VideoOff,
+  Loader2,
+  RefreshCw,
+  AlertTriangle,
+  Maximize,
+  Minimize,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -52,6 +60,11 @@ export function CamaraPlayer({
   className,
 }: CamaraPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  /**
+   * Ref del contenedor (no del <video>): en Safari, pedir pantalla completa
+   * sobre el elemento de vídeo falla; hay que pedirla sobre su contenedor.
+   */
+  const contenedorRef = useRef<HTMLDivElement | null>(null);
   // Referencias a recursos WebRTC para poder limpiarlos al desmontar.
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -60,6 +73,8 @@ export function CamaraPlayer({
     urlWebRTC ? "detenido" : "sin-configurar"
   );
   const [mensaje, setMensaje] = useState<string | null>(null);
+  /** Si el reproductor está ocupando toda la pantalla. */
+  const [pantallaCompleta, setPantallaCompleta] = useState(false);
 
   /** Libera por completo la conexión WebRTC. */
   const limpiar = useCallback(() => {
@@ -173,6 +188,52 @@ export function CamaraPlayer({
     return () => limpiar();
   }, [limpiar]);
 
+  /**
+   * Sincroniza el estado con los cambios de pantalla completa.
+   *
+   * Es imprescindible escuchar el evento en lugar de alternar un booleano:
+   * el usuario puede salir con Esc o con el gesto del sistema, y entonces
+   * el botón se quedaría mostrando el icono equivocado.
+   */
+  useEffect(() => {
+    const alCambiar = () => {
+      setPantallaCompleta(
+        document.fullscreenElement === contenedorRef.current
+      );
+    };
+    document.addEventListener("fullscreenchange", alCambiar);
+    return () => document.removeEventListener("fullscreenchange", alCambiar);
+  }, []);
+
+  /**
+   * Entra o sale de pantalla completa.
+   *
+   * Se pide sobre el CONTENEDOR, no sobre el `<video>`:
+   *   - Safari de iOS no permite pantalla completa en un <video> que recibe
+   *     un MediaStream (solo en vídeos con archivo).
+   *   - Al pedirla en el contenedor, también se ven los controles y la
+   *     etiqueta "En directo".
+   */
+  const alternarPantallaCompleta = useCallback(async () => {
+    const contenedor = contenedorRef.current;
+    if (!contenedor) return;
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+      await contenedor.requestFullscreen();
+    } catch {
+      /*
+       * Algunos navegadores (o contextos sin permisos, como un iframe sin
+       * `allowfullscreen`) rechazan la petición. No es un fallo grave: el
+       * vídeo sigue viéndose en su tamaño normal.
+       */
+      setMensaje("Este navegador no permite pantalla completa aquí.");
+    }
+  }, []);
+
   /** Reintento manual con una pequeña espera para evitar bucles. */
   const reintentar = useCallback(() => {
     setEstado("cargando");
@@ -183,6 +244,7 @@ export function CamaraPlayer({
 
   return (
     <div
+      ref={contenedorRef}
       className={`relative overflow-hidden rounded-2xl border bg-black ${className ?? ""}`}
     >
       {/* El vídeo siempre está montado para poder recibir el stream. */}
@@ -259,6 +321,25 @@ export function CamaraPlayer({
             <Video className="size-3.5" aria-hidden />
             En directo
           </span>
+          {/*
+            Pantalla completa. El botón solo aparece con el vídeo en marcha:
+            ampliar un stream que no funciona no aporta nada.
+          */}
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => void alternarPantallaCompleta()}
+            aria-label={
+              pantallaCompleta ? "Salir de pantalla completa" : "Pantalla completa"
+            }
+            title={pantallaCompleta ? "Salir de pantalla completa" : "Pantalla completa"}
+          >
+            {pantallaCompleta ? (
+              <Minimize className="size-3.5" aria-hidden />
+            ) : (
+              <Maximize className="size-3.5" aria-hidden />
+            )}
+          </Button>
         </div>
       )}
 

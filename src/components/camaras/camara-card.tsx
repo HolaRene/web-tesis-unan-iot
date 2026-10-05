@@ -7,11 +7,12 @@
  * preview. NO muestra credenciales ni URL RTSP: el modelo no las tiene.
  */
 import Link from "next/link";
-import { Camera, Pencil, Trash2, MapPin, Network, Clock } from "lucide-react";
+import { Pencil, Trash2, MapPin, Network, Clock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EstadoCamaraBadge } from "@/components/camaras/estado-camara";
+import { PreviewCamara } from "@/components/camaras/preview-camara";
 import { formatearFecha } from "@/utilidades";
 import type { Camara } from "@/tipos";
 
@@ -28,10 +29,14 @@ interface CamaraCardProps {
 export function CamaraCard({ camara, onEditar, onEliminar }: CamaraCardProps) {
   return (
     <Card className="overflow-hidden">
-      {/* Hueco de preview: se sustituye por el reproductor en el detalle. */}
-      <div className="flex aspect-video items-center justify-center bg-muted">
-        <Camera className="size-8 text-muted-foreground" aria-hidden />
-      </div>
+      {/*
+        Preview en vivo. Solo conecta con MediaMTX cuando el ratón entra en
+        la tarjeta, para no abrir una conexión por cada cámara del listado.
+      */}
+      <PreviewCamara
+        nombre={camara.nombre}
+        rutaWebrtc={camara.ruta_webrtc}
+      />
 
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
