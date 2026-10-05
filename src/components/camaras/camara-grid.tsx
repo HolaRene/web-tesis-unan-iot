@@ -20,9 +20,18 @@ interface CamaraGridProps {
   camaras?: Camara[];
   cargando: boolean;
   error: Error | null;
+  /** Acciones de administración; opcionales para poder reutilizar la grilla. */
+  onEditar?: (camara: Camara) => void;
+  onEliminar?: (camara: Camara) => void;
 }
 
-export function CamaraGrid({ camaras, cargando, error }: CamaraGridProps) {
+export function CamaraGrid({
+  camaras,
+  cargando,
+  error,
+  onEditar,
+  onEliminar,
+}: CamaraGridProps) {
   if (cargando) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -58,7 +67,12 @@ export function CamaraGrid({ camaras, cargando, error }: CamaraGridProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {camaras.map((camara) => (
-        <CamaraCard key={camara.id} camara={camara} />
+        <CamaraCard
+          key={camara.id}
+          camara={camara}
+          onEditar={onEditar}
+          onEliminar={onEliminar}
+        />
       ))}
     </div>
   );

@@ -7,7 +7,7 @@
  * preview. NO muestra credenciales ni URL RTSP: el modelo no las tiene.
  */
 import Link from "next/link";
-import { Camera, MapPin, Network, Clock } from "lucide-react";
+import { Camera, Pencil, Trash2, MapPin, Network, Clock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,7 +15,17 @@ import { EstadoCamaraBadge } from "@/components/camaras/estado-camara";
 import { formatearFecha } from "@/utilidades";
 import type { Camara } from "@/tipos";
 
-export function CamaraCard({ camara }: { camara: Camara }) {
+interface CamaraCardProps {
+  camara: Camara;
+  /**
+   * Acciones de administración. Son opcionales: el detalle reutiliza esta
+   * tarjeta sin botones de editar/borrar.
+   */
+  onEditar?: (camara: Camara) => void;
+  onEliminar?: (camara: Camara) => void;
+}
+
+export function CamaraCard({ camara, onEditar, onEliminar }: CamaraCardProps) {
   return (
     <Card className="overflow-hidden">
       {/* Hueco de preview: se sustituye por el reproductor en el detalle. */}
@@ -52,14 +62,38 @@ export function CamaraCard({ camara }: { camara: Camara }) {
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          render={<Link href={`/camaras/${camara.id}`} />}
-        >
-          Ver detalle
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            render={<Link href={`/camaras/${camara.id}`} />}
+          >
+            Ver detalle
+          </Button>
+          {onEditar ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEditar(camara)}
+              aria-label={`Editar ${camara.nombre}`}
+              title="Editar"
+            >
+              <Pencil className="size-4" aria-hidden />
+            </Button>
+          ) : null}
+          {onEliminar ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEliminar(camara)}
+              aria-label={`Eliminar ${camara.nombre}`}
+              title="Eliminar"
+            >
+              <Trash2 className="size-4" aria-hidden />
+            </Button>
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   );
