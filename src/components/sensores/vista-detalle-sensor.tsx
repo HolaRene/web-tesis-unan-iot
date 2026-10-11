@@ -146,9 +146,17 @@ function TarjetaMagnitudes({ sensorId }: { sensorId: string }) {
     [canales]
   );
 
+  /*
+   * El "ahora" se recalcula cada minuto, que es la resolución de la serie.
+   *
+   * Cada tarjeta dibuja los últimos 30 minutos en lugar de la hora completa:
+   * con 30 puntos en vez de 60 el trazo es más legible en un gráfico pequeño,
+   * y se ve mejor la tendencia reciente, que es lo que se consulta de un
+   * vistazo en el listado de magnitudes.
+   */
   const ahora = useAhora(60_000);
-  const desdeUltimaHora = useMemo(
-    () => new Date(ahora.getTime() - 60 * 60_000).toISOString(),
+  const desdeUltimaMediaHora = useMemo(
+    () => new Date(ahora.getTime() - 30 * 60_000).toISOString(),
     [ahora]
   );
 
@@ -156,7 +164,7 @@ function TarjetaMagnitudes({ sensorId }: { sensorId: string }) {
     sensorId,
     numericos,
     "minuto",
-    desdeUltimaHora,
+    desdeUltimaMediaHora,
     ahora.toISOString()
   );
 
@@ -234,6 +242,32 @@ function TarjetaMagnitudes({ sensorId }: { sensorId: string }) {
                   </div>
 
                   {/*
+                    Gráfico PRIMERO: los últimos 30 minutos de la magnitud.
+
+                    Va al inicio de la tarjeta, antes del valor y del
+                    contador de mediciones, porque es lo que se consulta de un
+                    vistazo: la forma de la serie dice más que un número suelto.
+
+                    Solo para magnitudes numéricas; para el resto se explica
+                    por qué no hay gráfico.
+                  */}
+                  {graficable ? (
+                    <div className="mt-2">
+                      <MiniGrafico
+                        datos={puntos}
+                        color={colorPorCanalId.get(canal.id)}
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Últimos 30 minutos
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Sin gráfico: {motivoNoGraficable(canal.tipo_dato)}
+                    </p>
+                  )}
+
+                  {/*
                     Último dato de la magnitud, con su fecha.
 
                     El backend ya devuelve `ultimo_valor_*`, `ultimo_registrado_en`
@@ -265,26 +299,6 @@ function TarjetaMagnitudes({ sensorId }: { sensorId: string }) {
                       </span>
                     ) : null}
                   </div>
-
-                  {/*
-                    Mini-gráfico de la última hora, solo para magnitudes
-                    numéricas. Para el resto se explica por qué no hay gráfico.
-                  */}
-                  {graficable ? (
-                    <div className="mt-2">
-                      <MiniGrafico
-                        datos={puntos}
-                        color={colorPorCanalId.get(canal.id)}
-                      />
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Última hora
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Sin gráfico: {motivoNoGraficable(canal.tipo_dato)}
-                    </p>
-                  )}
                 </li>
               );
             })}
