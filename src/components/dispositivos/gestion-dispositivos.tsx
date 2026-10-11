@@ -19,6 +19,7 @@ import { z } from "zod";
 import {
   AlertCircle,
   Loader2,
+  Lock,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -181,12 +182,36 @@ function FormularioDispositivo({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="disp-identificador">Identificador (para integración/NIR)</Label>
+            <Label htmlFor="disp-identificador">
+              Identificador (para integración)
+              <Lock
+                className="ml-1.5 inline size-3 text-muted-foreground"
+                aria-hidden
+              />
+            </Label>
             <Input
               id="disp-identificador"
-              placeholder="ESP32-Q2"
-              {...register("identificador")}
+              value={dispositivo ? (dispositivo?.identificador ?? "") : ""}
+              readOnly
+              disabled
+              placeholder="Se generará al guardar"
+              className="bg-muted font-mono text-sm"
             />
+            <p className="text-xs text-muted-foreground">
+              {dispositivo ? (
+                <>
+                  Lo usa el equipo para enviar datos
+                  (<code>{`{"dispositivo": "${dispositivo?.identificador ?? ""}"}`}</code>).
+                  <strong> No se puede cambiar</strong>: las mediciones
+                  anteriores quedarían asociadas al valor antiguo.
+                </>
+              ) : (
+                <>
+                  Lo genera el servidor a partir del <strong>nombre</strong>. No
+                  hace falta inventarlo y nunca se repite.
+                </>
+              )}
+            </p>
           </div>
 
           <div className="grid gap-2">
@@ -331,7 +356,6 @@ export function GestionDispositivos() {
       direccion_ip: datos.direccion_ip || null,
       fabricante: datos.fabricante || null,
       modelo: datos.modelo || null,
-      identificador: datos.identificador || null,
       area_id: datos.area_id || null,
       estado: datos.estado || "online",
     };

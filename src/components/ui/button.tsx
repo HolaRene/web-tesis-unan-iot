@@ -42,12 +42,39 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  nativeButton,
+  render,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  /*
+   * Base UI asume `nativeButton: true` y avisa si el elemento renderizado no
+   * es un <button>:
+   *
+   *   "A component that acts as a button expected a native <button> because
+   *    the nativeButton prop is true."
+   *
+   * Eso ocurre cada vez que se usa `render={<Link href="..." />}` para que un
+   * botón navegue: el elemento final es un <a>, no un <button>.
+   *
+   * En ese caso la semántica correcta es `nativeButton: false`: el enlace ya
+   * es accesible por sí mismo (se enfoca, se activa con Enter y los lectores
+   * de pantalla lo anuncian como enlace).
+   *
+   * Se detecta automáticamente en lugar de exigir la prop en los ~7 sitios
+   * que renderizan enlaces: es fácil olvidarla y el aviso solo aparece en
+   * consola, donde pasa desapercibido.
+   *
+   * Si el consumidor pasa `nativeButton` explícitamente, se respeta.
+   */
+  const esEnlace = render != null && nativeButton === undefined;
+
   return (
     <ButtonPrimitive
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      {...(esEnlace ? { nativeButton: false } : {})}
+      {...(nativeButton !== undefined ? { nativeButton } : {})}
+      render={render}
       {...props}
     />
   )

@@ -18,7 +18,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { AlertCircle, Loader2, Plus, Trash2, X } from "lucide-react";
+import { AlertCircle, Loader2, Lock, Plus, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,7 +69,7 @@ interface MagnitudFila {
 const esquemaFormSensor = z.object({
   dispositivo_id: z.string().optional().nullable(),
   nombre: z.string().trim().min(1, "El nombre es obligatorio"),
-  codigo: z.string().trim().min(1, "El código es obligatorio"),
+  // El código lo genera el servidor: no se valida ni se envía.
   fabricante: z.string().trim().optional().nullable(),
   modelo: z.string().trim().optional().nullable(),
 });
@@ -118,7 +118,6 @@ function FormularioSensor({
     defaultValues: {
       dispositivo_id: sensor?.dispositivo_id ?? "",
       nombre: sensor?.nombre ?? "",
-      codigo: sensor?.codigo ?? "",
       fabricante: sensor?.fabricante ?? "",
       modelo: sensor?.modelo ?? "",
     },
@@ -200,16 +199,36 @@ function FormularioSensor({
               )}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="sen-codigo">Código</Label>
+              <Label htmlFor="sen-codigo">
+                Código
+                <Lock
+                  className="ml-1.5 inline size-3 text-muted-foreground"
+                  aria-hidden
+                />
+              </Label>
               <Input
                 id="sen-codigo"
-                placeholder="DHT22-01"
-                aria-invalid={!!errors.codigo}
-                {...register("codigo")}
+                value={sensor ? (sensor?.codigo ?? "") : ""}
+                readOnly
+                disabled
+                placeholder="Se generará al guardar"
+                className="bg-muted font-mono text-sm"
               />
-              {errors.codigo && (
-                <p className="text-sm text-destructive">{errors.codigo.message}</p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                {sensor ? (
+                  <>
+                    Es la base del código de sus canales
+                    (<code>{`${sensor?.codigo ?? ""}-...`}</code>).
+                    <strong> No se puede cambiar</strong>: los equipos ya lo
+                    usan para enviar mediciones.
+                  </>
+                ) : (
+                  <>
+                    Lo genera el servidor desde el <strong>nombre</strong> y las
+                    magnitudes. Nunca se repite.
+                  </>
+                )}
+              </p>
             </div>
           </div>
 
@@ -414,20 +433,54 @@ export function GestionSensores() {
     enabled: abrir && !!editar?.id,
   });
 
-  const magnitudesIniciales: MagnitudFila[] = (canalesSensor.data ?? []).map((c) => ({
-    clave: c.id,
-    tipo_variable_id: c.tipo_variable_id ?? "",
-    unidad: c.unidad ?? "",
-    rango_min: c.rango_min !== null && c.rango_min !== undefined ? String(c.rango_min) : "",
-    rango_max: c.rango_max !== null && c.rango_max !== undefined ? String(c.rango_max) : "",
-  }));
+  /**
+   * Magnitudes con las que se abre el formulario al editar.
+   *
+   * Se construyen desde los CANALES, que es donde vive cada magnitud del
+   * modelo multivariable. Si el sensor aún no tiene ninguno (caso antiguo o
+   * recién creado a medias), se recurre a la variable principal del propio
+   * sensor para no mostrar el desplegable vacío.
+   */
+  // Sin useMemo: React Compiler memoriza el componente, y una lista de
+  // dependencias manual que no coincida exactamente le impide optimizar.
+  const magnitudesIniciales: MagnitudFila[] = (() => {
+    const desdeCanales = (canalesSensor.data ?? []).map((c) => ({
+      clave: c.id,
+      tipo_variable_id: c.tipo_variable_id ?? "",
+      unidad: c.unidad ?? "",
+      rango_min:
+        c.rango_min !== null && c.rango_min !== undefined
+          ? String(c.rango_min)
+          : "",
+      rango_max:
+        c.rango_max !== null && c.rango_max !== undefined
+          ? String(c.rango_max)
+          : "",
+    }));
+
+    if (desdeCanales.length > 0) return desdeCanales;
+
+    // Respaldo: la variable del propio sensor.
+    if (editar?.tipo_variable_id) {
+      return [
+        {
+          clave: "principal",
+          tipo_variable_id: editar.tipo_variable_id,
+          unidad: editar.unidad ?? "",
+          rango_min: "",
+          rango_max: "",
+        },
+      ];
+    }
+
+    return [];
+  })();
 
   async function guardar(datos: DatosFormSensor, magnitudes: MagnitudSensor[]) {
     setErrorOp(null);
     const registro: DatosSensor = {
       dispositivo_id: datos.dispositivo_id || null,
       nombre: datos.nombre,
-      codigo: datos.codigo,
       fabricante: datos.fabricante || null,
       modelo: datos.modelo || null,
       activo: true,
@@ -458,25 +511,50 @@ export function GestionSensores() {
 
   const filas = sensores.data ?? [];
 
+  /**
+   * ¿Se puede montar ya el formulario?
+   *
+   * NO se monta hasta que los canales (las magnitudes) están cargados.
+   *
+   * Por qué: el formulario inicializa su estado con `useState(magnitudes)`.
+   * Esa prop solo se lee en el PRIMER render. Si se montara antes de que la
+   * petición llegue, el estado se congelaría con la lista vacía y las
+   * variables no aparecerían al editar, aunque la respuesta llegara después.
+   *
+   * Montándolo cuando ya hay datos, el estado nace correcto.
+   */
+  const magnitudesListas = !editar || !canalesSensor.isLoading;
+
   return (
     <div className="space-y-4">
-      <FormularioSensor
-        key={abrir ? editar?.id ?? "nuevo" : "cerrado"}
-        abierto={abrir}
-        sensor={editar}
-        dispositivos={dispositivos}
-        tipos={tipos}
-        magnitudesIniciales={magnitudesIniciales}
-        cargandoMagnitudes={!!editar && canalesSensor.isLoading}
-        enviando={mut.crear.isPending || mut.actualizar.isPending}
-        error={errorOp}
-        onOpenChange={(val) => {
-          setAbrir(val);
-          if (val) setErrorOp(null);
-          if (!val) setEditar(null);
-        }}
-        onGuardar={guardar}
-      />
+      {magnitudesListas ? (
+        <FormularioSensor
+          /*
+           * La `key` incluye la carga de magnitudes: si por cualquier motivo
+           * el formulario se montara antes, al llegar los datos se remonta con
+           * el estado correcto en lugar de quedarse vacío.
+           */
+          key={
+            abrir
+              ? `${editar?.id ?? "nuevo"}-${canalesSensor.dataUpdatedAt}`
+              : "cerrado"
+          }
+          abierto={abrir}
+          sensor={editar}
+          dispositivos={dispositivos}
+          tipos={tipos}
+          magnitudesIniciales={magnitudesIniciales}
+          cargandoMagnitudes={!!editar && canalesSensor.isLoading}
+          enviando={mut.crear.isPending || mut.actualizar.isPending}
+          error={errorOp}
+          onOpenChange={(val) => {
+            setAbrir(val);
+            if (val) setErrorOp(null);
+            if (!val) setEditar(null);
+          }}
+          onGuardar={guardar}
+        />
+      ) : null}
 
       <Card>
         <CardHeader className="flex items-center justify-between gap-3">
