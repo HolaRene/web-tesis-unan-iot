@@ -350,6 +350,13 @@ export interface Actuador {
   /** Área del dispositivo al que pertenece (el backend lo devuelve). */
   area_id?: string | null;
   area_nombre?: string | null;
+  /**
+   * Tema MQTT al que se publican las órdenes de este actuador.
+   * Si es `null`, se deriva del código.
+   */
+  topico_mqtt?: string | null;
+  /** Momento en que el equipo confirmó el último cambio de estado. */
+  ultima_orden_en?: string | null;
 }
 
 /**

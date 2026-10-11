@@ -37,7 +37,9 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { GraficaActividad } from "@/components/dashboard/grafica-actividad";
+import { PanelMagnitudes } from "@/components/dashboard/panel-magnitudes";
+import { PanelActividad } from "@/components/dashboard/panel-actividad";
+import { PanelActuadores } from "@/components/dashboard/panel-actuadores";
 import { useResumenDashboard } from "@/hooks/use-resumen-dashboard";
 import {
   formatearFecha,
@@ -140,25 +142,26 @@ export function PanelDashboard() {
         </section>
       )}
 
+      {/*
+        Estado actual de los sensores: una tarjeta por magnitud, con icono
+        según el tipo, semáforo de frescura y mini-gráfico de la última hora.
+        Va justo debajo de las métricas porque es lo que se consulta primero.
+      */}
+      <PanelMagnitudes />
+
+      {/* Control de actuadores: el widget depende del tipo de cada uno. */}
+      <PanelActuadores />
+
       {!resumen.cargando && (
         <>
           <div className="grid gap-4 lg:grid-cols-3">
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Actividad de mediciones</CardTitle>
-                <CardDescription>
-                  Mediciones registradas por hora en el sistema.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <GraficaActividad
-                  datos={resumen.actividad.map((p) => ({
-                    hora: p.etiqueta,
-                    valor: p.valor,
-                  }))}
-                />
-              </CardContent>
-            </Card>
+            {/*
+              Actividad real, agregada en SQL. Antes se calculaba con las 10
+              ultimas mediciones del resumen y solia dibujar una sola barra.
+            */}
+            <div className="lg:col-span-2">
+              <PanelActividad />
+            </div>
 
             <Card>
               <CardHeader>
