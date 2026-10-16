@@ -53,7 +53,21 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-6 rounded-4xl bg-popover p-6 text-sm text-popover-foreground shadow-xl ring-1 ring-foreground/5 duration-100 outline-none sm:max-w-md dark:ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          /*
+           * `max-h-[90vh]` + `overflow-y-auto`: el diálogo NUNCA puede ser más
+           * alto que la ventana.
+           *
+           * Sin esto, un formulario con muchos campos se salía de la pantalla
+           * y los botones de guardar quedaban fuera del área visible, sin
+           * forma de llegar a ellos ni de cerrar el diálogo.
+           *
+           * Se pone AQUÍ, en el componente base, y no en cada formulario: así
+           * ningún diálogo futuro puede volver a desbordarse por olvido.
+           *
+           * Si un formulario concreto necesita otro límite, su `className` se
+           * aplica después y tiene prioridad con `tailwind-merge`.
+           */
+          "fixed top-1/2 left-1/2 z-50 grid max-h-[90vh] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-6 overflow-y-auto overflow-x-hidden rounded-4xl bg-popover p-6 text-sm text-popover-foreground shadow-xl ring-1 ring-foreground/5 duration-100 outline-none sm:max-w-md dark:ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}
@@ -102,7 +116,20 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        /*
+         * `sticky bottom-0`: los botones de acción quedan SIEMPRE visibles.
+         *
+         * Como el contenido del diálogo puede desplazarse (ver DialogContent),
+         * sin esto el botón de guardar se iría hacia arriba al bajar y habría
+         * que desplazarse hasta el final para guardar. En un formulario largo
+         * eso es incómodo, y si el usuario no descubre el scroll, parece que
+         * no se puede guardar.
+         *
+         * El `-mx-6 px-6 pb-1` extiende el fondo hasta los bordes del diálogo
+         * (que tiene `p-6`), para que el contenido no se vea por debajo de los
+         * botones al desplazarse.
+         */
+        "sticky bottom-0 -mx-6 flex flex-col-reverse gap-2 border-t bg-popover px-6 pt-4 pb-1 sm:flex-row sm:justify-end",
         className
       )}
       {...props}

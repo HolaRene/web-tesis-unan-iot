@@ -63,6 +63,29 @@ export const PROTOCOLOS = [
 
 export type Protocolo = (typeof PROTOCOLOS)[number]["valor"];
 
+/*
+ * Listas en formato { value, label } para el prop `items` de Base UI.
+ *
+ * Base UI necesita esta lista para mostrar la ETIQUETA en el disparador
+ * cerrado. Sin ella muestra el valor crudo, que en el caso de un
+ * identificador (UUID) es ilegible.
+ */
+const TIPOS_REGISTRO = [
+  { value: "coil", label: "Coil (FC5)" },
+  { value: "holding", label: "Registro holding (FC6)" },
+];
+
+const NIVELES_ACTIVO = [
+  { value: "1", label: "Alto (1) — lo habitual" },
+  { value: "0", label: "Bajo (0) — relé invertido" },
+];
+
+const METODOS_HTTP = [
+  { value: "GET", label: "GET" },
+  { value: "POST", label: "POST" },
+  { value: "PUT", label: "PUT" },
+];
+
 /**
  * Valores del asistente.
  *
@@ -175,28 +198,37 @@ export function AsistenteDireccion({
   onBorrador: (b: Partial<BorradorDireccion>) => void;
 }) {
   return (
-    <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
-      <div className="grid gap-2">
-        <Label htmlFor="act-protocolo">Protocolo de accionamiento</Label>
-        <Select
-          value={protocolo}
-          onValueChange={(v) => onProtocolo((v as string) ?? "mqtt")}
-        >
-          <SelectTrigger id="act-protocolo">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PROTOCOLOS.map((p) => (
-              <SelectItem key={p.valor} value={p.valor}>
-                {p.etiqueta} — {p.detalle}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-muted-foreground">
-          Determina cómo se acciona el actuador y qué datos de dirección hacen
-          falta. Sin ellos, el comando no dice al equipo <em>dónde</em>{" "}
-          escribir.
+    <div className="space-y-3 rounded-xl border bg-muted/30 p-3">
+      {/*
+        El protocolo y su explicación van LADO A LADO.
+
+        Apilados sumaban ~110 px de alto; en fila, la mitad. La etiqueta
+        "Protocolo" es corta, así que no necesita todo el ancho.
+      */}
+      <div className="grid items-start gap-3 sm:grid-cols-[minmax(0,220px)_1fr]">
+        <div className="grid gap-2">
+          <Label htmlFor="act-protocolo">Protocolo</Label>
+          <Select
+            items={PROTOCOLOS.map((p) => ({ value: p.valor, label: p.etiqueta }))}
+            value={protocolo}
+            onValueChange={(v) => onProtocolo((v as string) ?? "mqtt")}
+          >
+            <SelectTrigger id="act-protocolo">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PROTOCOLOS.map((p) => (
+                <SelectItem key={p.valor} value={p.valor}>
+                  {p.etiqueta}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <p className="text-xs text-muted-foreground sm:pt-7">
+          Determina cómo se acciona y qué dirección hace falta. Sin ella, el
+          comando no dice al equipo <em>dónde</em> escribir.
         </p>
       </div>
 
@@ -207,6 +239,7 @@ export function AsistenteDireccion({
             <div className="grid gap-2">
               <Label htmlFor="act-tipo-modbus">Tipo de registro</Label>
               <Select
+                items={TIPOS_REGISTRO}
                 value={borrador.tipoModbus}
                 onValueChange={(v) =>
                   onBorrador({ tipoModbus: (v as string) ?? "coil" })
@@ -253,9 +286,8 @@ export function AsistenteDireccion({
 
           <p className="text-xs text-muted-foreground">
             El PLC solo entiende «en la dirección <strong>100</strong>, pon un{" "}
-            <strong>1</strong>». Esa dirección es el cableado de la instalación,
-            no algo que el software pueda deducir. La unidad distingue varios
-            PLC o gateways en la misma red.
+            <strong>1</strong>». Es el cableado de la instalación. La unidad
+            distingue varios PLC en la misma red.
           </p>
         </div>
       ) : null}
@@ -280,6 +312,7 @@ export function AsistenteDireccion({
             <div className="grid gap-2">
               <Label htmlFor="act-nivel">Nivel que lo activa</Label>
               <Select
+                items={NIVELES_ACTIVO}
                 value={borrador.nivelActivo}
                 onValueChange={(v) => onBorrador({ nivelActivo: (v as string) ?? "1" })}
               >
@@ -295,9 +328,9 @@ export function AsistenteDireccion({
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Muchos módulos de relé se activan con nivel <strong>bajo</strong>{" "}
-            (0 V): escribir un 1 los apagaría. Configurarlo aquí evita tener que
-            invertir la lógica en el firmware, que es donde peor se encuentra.
+            Muchos relés se activan con nivel <strong>bajo</strong> (0 V):
+            escribir un 1 los apagaría. Configurarlo aquí evita invertir la
+            lógica en el firmware.
           </p>
         </div>
       ) : null}
@@ -315,9 +348,9 @@ export function AsistenteDireccion({
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Si se deja vacío, se publica en{" "}
-            <code>hospital/quirofano/cmd/&lt;código del actuador&gt;</code>. Un
-            ESP32 puede entonces decidir qué pin activar según el código.
+            Si se deja vacío se publica en{" "}
+            <code>…/cmd/&lt;código del actuador&gt;</code>, y el equipo decide
+            el pin según el código.
           </p>
         </div>
       ) : null}
@@ -339,6 +372,7 @@ export function AsistenteDireccion({
             <div className="grid gap-2">
               <Label htmlFor="act-metodo">Método</Label>
               <Select
+                items={METODOS_HTTP}
                 value={borrador.metodoHttp}
                 onValueChange={(v) => onBorrador({ metodoHttp: (v as string) ?? "POST" })}
               >
@@ -355,7 +389,7 @@ export function AsistenteDireccion({
           </div>
           <p className="text-xs text-muted-foreground">
             La API no llama a esta URL: la incluye en el comando para que la use
-            quien lo entregue (Node-RED o un script de integración).
+            quien lo entregue.
           </p>
         </div>
       ) : null}

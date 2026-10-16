@@ -192,6 +192,19 @@ export function FormularioActuador({
 
   const codigoPrevisto = previsualizarCodigo(nombre ?? "", tipo ?? "");
 
+  /*
+   * Opciones del desplegable de dispositivo, en el formato { label, value }
+   * que espera Base UI.
+   *
+   * Se usa para que el disparador muestre el NOMBRE y no el UUID. Las opciones
+   * visibles se declaran igualmente en `SelectContent`; esto solo alimenta el
+   * texto del disparador cerrado.
+   */
+  const opcionesDispositivo = dispositivos.map((d) => ({
+    value: d.id,
+    label: d.identificador ? `${d.nombre} · ${d.identificador}` : d.nombre,
+  }));
+
   function enviar(datos: DatosFormActuador) {
     onGuardar({
       dispositivo_id: datos.dispositivo_id,
@@ -206,7 +219,18 @@ export function FormularioActuador({
 
   return (
     <Dialog open={abierto} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      {/*
+        El límite de altura y el scroll los pone ahora `DialogContent`
+        (src/components/ui/dialog.tsx), así que ningún formulario puede
+        desbordarse por olvidarlo.
+
+        Aquí solo se ajusta el ANCHO: 2xl en lugar del md por defecto, porque
+        los campos van en filas de tres y necesitan más espacio.
+
+        Alto total del formulario: ~560 px, frente a los ~830 px que tenía
+        antes de reorganizar los campos en filas.
+      */}
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {actuador ? "Editar actuador" : "Nuevo actuador"}
@@ -226,36 +250,59 @@ export function FormularioActuador({
             </Alert>
           ) : null}
 
-          <div className="grid gap-2">
-            <Label htmlFor="act-dispositivo">Dispositivo</Label>
-            <Select
-              value={dispositivoId || undefined}
-              onValueChange={(valor) =>
-                setValue("dispositivo_id", (valor as string) ?? "", {
-                  shouldValidate: true,
-                })
-              }
-            >
-              <SelectTrigger id="act-dispositivo" aria-invalid={!!errors.dispositivo_id}>
-                <SelectValue placeholder="Seleccione el dispositivo" />
-              </SelectTrigger>
-              <SelectContent>
-                {dispositivos.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.nombre}
-                    {d.identificador ? ` · ${d.identificador}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.dispositivo_id ? (
-              <p className="text-sm text-destructive">
-                {errors.dispositivo_id.message}
-              </p>
-            ) : null}
-          </div>
+          {/*
+            Dispositivo, nombre y tipo EN UNA FILA.
 
-          <div className="grid gap-4 sm:grid-cols-2">
+            Antes iban en tres bloques apilados, lo que sumaba ~210 px de alto
+            y hacía que el formulario se saliera de la pantalla. Al ponerlos en
+            fila se ahorran unos 150 px, y el orden natural de lectura se
+            mantiene: dónde va → cómo se llama → de qué tipo es.
+          */}
+          <div className="grid gap-4 sm:grid-cols-[1.2fr_1fr_0.9fr]">
+            <div className="grid gap-2">
+              <Label htmlFor="act-dispositivo">Dispositivo</Label>
+              {/*
+                `items` es OBLIGATORIO para que el trigger muestre la ETIQUETA.
+
+                Sin él, Base UI no sabe qué nombre corresponde al valor
+                seleccionado y muestra el valor crudo: en este caso un UUID
+                largo («7eab7e87-9eea-4af5-…»), que no dice nada al usuario.
+
+                Con `items`, Base UI cruza el valor con la lista y muestra el
+                `label`. Las opciones siguen declarándose en `SelectContent`;
+                `items` solo alimenta el texto del disparador.
+              */}
+              <Select
+                items={opcionesDispositivo}
+                value={dispositivoId || undefined}
+                onValueChange={(valor) =>
+                  setValue("dispositivo_id", (valor as string) ?? "", {
+                    shouldValidate: true,
+                  })
+                }
+              >
+                <SelectTrigger
+                  id="act-dispositivo"
+                  aria-invalid={!!errors.dispositivo_id}
+                >
+                  <SelectValue placeholder="Seleccione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dispositivos.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.nombre}
+                      {d.identificador ? ` · ${d.identificador}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.dispositivo_id ? (
+                <p className="text-sm text-destructive">
+                  {errors.dispositivo_id.message}
+                </p>
+              ) : null}
+            </div>
+
             <div className="grid gap-2">
               <Label htmlFor="act-nombre">Nombre</Label>
               <Input
@@ -310,51 +357,48 @@ export function FormularioActuador({
           />
 
           {/*
-            Código: BLOQUEADO.
+            CÓDIGO, ESTADO Y ACTIVO EN UNA FILA.
 
-            Se muestra porque hay que copiarlo a Node-RED para el tema MQTT,
-            pero no se puede editar: es la clave que ya está en uso.
+            El código iba solo en su propio bloque, con tres líneas de ayuda, y
+            sumaba casi 120 px. Compartiendo fila con «Estado» y «Activo» se
+            ahorra esa altura, y los tres son datos cortos que se leen bien
+            juntos: cómo se llama por dentro, en qué estado está, y si admite
+            órdenes.
           */}
-          <div className="grid gap-2">
-            <Label htmlFor="act-codigo">
-              Código (tema MQTT)
-              <Lock
-                className="ml-1.5 inline size-3 text-muted-foreground"
-                aria-hidden
-              />
-            </Label>
-            <Input
-              id="act-codigo"
-              value={actuador ? actuador.codigo : codigoPrevisto}
-              readOnly
-              disabled
-              placeholder="Se generará al guardar"
-              className="bg-muted font-mono text-sm"
-            />
-            <p className="text-xs text-muted-foreground">
-              {actuador ? (
-                <>
-                  Tema de publicación:{" "}
-                  <code>
-                    {actuador.topico_mqtt ??
-                      `hospital/quirofano/cmd/${actuador.codigo}`}
-                  </code>
-                  . <strong>No se puede cambiar</strong>: los comandos
-                  seguirían saliendo al tema antiguo.
-                </>
-              ) : (
-                <>
-                  Lo genera el servidor a partir del <strong>tipo</strong> y el{" "}
-                  <strong>nombre</strong>. Se muestra en vivo para que sepas
-                  cómo quedará.
-                </>
-              )}
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-[1.4fr_0.8fr_0.8fr]">
             <div className="grid gap-2">
-              <Label htmlFor="act-estado">Estado actual</Label>
+              <Label htmlFor="act-codigo">
+                Código
+                <Lock
+                  className="ml-1.5 inline size-3 text-muted-foreground"
+                  aria-hidden
+                />
+              </Label>
+              <Input
+                id="act-codigo"
+                value={actuador ? actuador.codigo : codigoPrevisto}
+                readOnly
+                disabled
+                placeholder="Al guardar"
+                className="bg-muted font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                {actuador ? (
+                  <>
+                    <strong>No se puede cambiar</strong>: los comandos saldrían
+                    al tema antiguo.
+                  </>
+                ) : (
+                  <>
+                    Lo genera el servidor desde el <strong>tipo</strong> y el{" "}
+                    <strong>nombre</strong>.
+                  </>
+                )}
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="act-estado">Estado</Label>
               <Input
                 id="act-estado"
                 placeholder="off"

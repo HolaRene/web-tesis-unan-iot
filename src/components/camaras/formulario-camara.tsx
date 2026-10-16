@@ -230,7 +230,18 @@ export function FormularioCamara({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="cam-area">Área</Label>
+              {/*
+                `items`: sin esto Base UI muestra el UUID del área en lugar de
+                su nombre. Requiere incluir la opción especial "ninguna".
+              */}
               <Select
+                items={[
+                  { value: "ninguna", label: "Sin área" },
+                  ...(areasQ.data ?? []).map((a) => ({
+                    value: a.id,
+                    label: a.nombre,
+                  })),
+                ]}
                 value={areaId || "ninguna"}
                 onValueChange={(v) => setAreaId(!v || v === "ninguna" ? "" : v)}
               >
@@ -257,7 +268,12 @@ export function FormularioCamara({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="cam-fabricante">Fabricante</Label>
+                {/* `items`: sin esto se ve el id del fabricante, no su nombre. */}
                 <Select
+                  items={FABRICANTES.map((f) => ({
+                    value: f.id,
+                    label: f.nombre,
+                  }))}
                   value={fabricanteId}
                   onValueChange={(v) => {
                     if (!v) return;
@@ -281,7 +297,12 @@ export function FormularioCamara({
 
               <div className="space-y-1.5">
                 <Label htmlFor="cam-canal">Canal</Label>
+                {/* `items`: sin esto se ve el número del canal, no su etiqueta. */}
                 <Select
+                  items={canales.map((c) => ({
+                    value: String(c.numero),
+                    label: c.etiqueta,
+                  }))}
                   value={canalNumero}
                   onValueChange={(v) => {
                     if (!v) return;
