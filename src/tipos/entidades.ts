@@ -344,6 +344,9 @@ export interface Actuador {
   tipo: string;
   estado_actual: string | null;
   activo: boolean;
+  /** Cómo se acciona: modbus, gpio, mqtt o http. */
+  protocolo?: string;
+  /** Direccionamiento según el protocolo (dirección Modbus, pin GPIO…). */
   configuracion: Record<string, unknown> | null;
   creado_en: string;
   dispositivo_nombre?: string | null;

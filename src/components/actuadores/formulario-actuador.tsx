@@ -34,6 +34,7 @@
  * Ver `docs/formularios-carga-asincrona.md`.
  */
 
+import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -60,6 +61,13 @@ import {
 } from "@/components/ui/select";
 import type { Actuador, Dispositivo } from "@/tipos";
 import type { DatosActuador } from "@/servicios/actuadores.servicio";
+import {
+  AsistenteDireccion,
+  BORRADOR_VACIO,
+  borradorDesdeConfiguracion,
+  configuracionDesdeBorrador,
+  type BorradorDireccion,
+} from "@/components/actuadores/asistente-direccion";
 
 /** Tipos de actuador que la interfaz sabe representar. */
 export const TIPOS_ACTUADOR = [
@@ -151,6 +159,29 @@ export function FormularioActuador({
   });
 
   /*
+   * Estado del ASISTENTE DE DIRECCIONAMIENTO.
+   *
+   * Vive aparte de react-hook-form porque su forma cambia según el protocolo
+   * (unos campos u otros) y RHF necesitaría un esquema distinto por cada uno.
+   */
+  const [protocolo, setProtocolo] = useState<string>(
+    actuador?.protocolo ?? "mqtt"
+  );
+  const [direccion, setDireccion] = useState<BorradorDireccion>(
+    borradorDesdeConfiguracion(actuador?.protocolo, actuador?.configuracion)
+  );
+
+  function cambiarProtocolo(p: string) {
+    setProtocolo(p);
+    /*
+     * Al cambiar de protocolo se limpian los campos de dirección: los de
+     * Modbus no tienen sentido en GPIO, y conservarlos haría que se enviaran
+     * datos del protocolo anterior.
+     */
+    setDireccion(BORRADOR_VACIO);
+  }
+
+  /*
    * `useWatch` en lugar de `watch()`: devuelve el VALOR en lugar de una
    * función, así que React Compiler puede memorizar el componente. Con
    * `watch()` avisa de que la función no se puede memorizar de forma segura.
@@ -168,6 +199,8 @@ export function FormularioActuador({
       tipo: datos.tipo.trim(),
       estado_actual: datos.estado_actual?.trim() || null,
       activo: datos.activo ?? true,
+      protocolo,
+      configuracion: configuracionDesdeBorrador(protocolo, direccion),
     });
   }
 
@@ -261,6 +294,20 @@ export function FormularioActuador({
               ) : null}
             </div>
           </div>
+
+          {/*
+            DIRECCIONAMIENTO: lo que hace que el comando sirva para un PLC.
+            Sin esto, el comando solo lleva el código del actuador y un PLC
+            no sabe dónde escribir.
+          */}
+          <AsistenteDireccion
+            protocolo={protocolo}
+            borrador={direccion}
+            onProtocolo={cambiarProtocolo}
+            onBorrador={(parcial) =>
+              setDireccion((d) => ({ ...d, ...parcial }))
+            }
+          />
 
           {/*
             Código: BLOQUEADO.

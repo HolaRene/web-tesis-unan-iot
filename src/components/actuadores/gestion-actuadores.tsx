@@ -289,6 +289,29 @@ export function GestionActuadores() {
   );
 }
 
+/**
+ * Texto legible del direccionamiento, para la tarjeta.
+ *
+ * Traduce la configuración técnica a algo que se entienda de un vistazo:
+ * «coil 100 (unidad 1)» dice mucho más que un JSON.
+ */
+function descripcionDireccion(a: Actuador): string {
+  const c = (a.configuracion ?? {}) as Record<string, unknown>;
+  const proto = a.protocolo ?? "mqtt";
+
+  if (proto === "modbus") {
+    const tipo = c.tipo === "holding" ? "registro" : "coil";
+    const unidad = c.unidad_id !== undefined ? ` · unidad ${c.unidad_id}` : "";
+    return `${tipo} ${c.direccion ?? "?"}${unidad}`;
+  }
+  if (proto === "gpio") {
+    const nivel = c.nivel_activo === 0 ? " · activo a 0" : "";
+    return `pin ${c.pin ?? "?"}${nivel}`;
+  }
+  if (proto === "http") return String(c.url ?? "sin URL");
+  return c.topico ? String(c.topico) : "tema derivado del código";
+}
+
 /** Tarjeta de un actuador con sus botones de comando. */
 function TarjetaActuador({
   actuador,
@@ -322,6 +345,18 @@ function TarjetaActuador({
               {actuador.dispositivo_nombre
                 ? ` · ${actuador.dispositivo_nombre}`
                 : ""}
+            </p>
+            {/*
+              La DIRECCIÓN es lo que hace que el comando sirva para un PLC.
+              Se muestra en la tarjeta porque es el dato que se necesita al
+              cablear la instalación y al diagnosticar por qué un botón no
+              acciona nada.
+            */}
+            <p className="mt-1 text-xs text-muted-foreground">
+              <Badge variant="outline" className="mr-1">
+                {actuador.protocolo ?? "mqtt"}
+              </Badge>
+              <code className="text-[11px]">{descripcionDireccion(actuador)}</code>
             </p>
           </div>
           <div className="flex items-center gap-2">

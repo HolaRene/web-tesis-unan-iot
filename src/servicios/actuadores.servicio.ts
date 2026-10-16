@@ -43,6 +43,15 @@ export interface DatosActuador {
   tipo: string;
   estado_actual?: string | null;
   activo?: boolean;
+  /**
+   * Cómo se acciona: `modbus`, `gpio`, `mqtt` o `http`.
+   *
+   * Sin esto, el comando solo llevaría el código del actuador y un PLC no
+   * sabría dónde escribir.
+   */
+  protocolo?: string;
+  /** Direccionamiento según el protocolo (dirección Modbus, pin GPIO…). */
+  configuracion?: Record<string, unknown> | null;
 }
 
 export async function crearActuador(datos: DatosActuador): Promise<Actuador> {
