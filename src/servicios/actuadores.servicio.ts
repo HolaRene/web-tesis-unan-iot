@@ -30,16 +30,48 @@ export async function obtenerActuador(id: string): Promise<Actuador> {
   return respuesta.datos;
 }
 
-export async function crearActuador(datos: {
+/**
+ * Datos para crear o actualizar un actuador.
+ *
+ * NO incluye `codigo`: lo genera el servidor a partir del tipo y el nombre
+ * (ver `docs/identificadores-automaticos.md`). Enviarlo no tendría efecto,
+ * porque el backend lo descarta.
+ */
+export interface DatosActuador {
   dispositivo_id: string;
   nombre: string;
-  codigo: string;
   tipo: string;
-  estado_actual?: string;
+  estado_actual?: string | null;
   activo?: boolean;
-}): Promise<Actuador> {
+}
+
+export async function crearActuador(datos: DatosActuador): Promise<Actuador> {
   const respuesta = await api.enviar<Actuador>("/actuadores", datos, "POST");
   return respuesta.datos;
+}
+
+/**
+ * Actualiza un actuador.
+ *
+ * El `codigo` NO se envía: es inmutable. Forma parte del tema MQTT que
+ * Node-RED ya usa para publicar órdenes; si cambiara, los comandos seguirían
+ * saliendo al tema antiguo y el equipo dejaría de responder.
+ */
+export async function actualizarActuador(
+  id: string,
+  datos: Partial<DatosActuador>
+): Promise<Actuador> {
+  const respuesta = await api.enviar<Actuador>(
+    `/actuadores/${id}`,
+    datos,
+    "PATCH"
+  );
+  return respuesta.datos;
+}
+
+/** Elimina un actuador por su id. */
+export async function eliminarActuador(id: string): Promise<void> {
+  await api.eliminar(`/actuadores/${id}`);
 }
 
 /*

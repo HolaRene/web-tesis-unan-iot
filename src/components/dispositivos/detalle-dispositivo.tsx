@@ -266,28 +266,30 @@ function ResumenActuadores({
 }) {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  /*
+   * Sin `codigo`: lo genera el servidor desde el tipo y el nombre. Pedirlo
+   * aquí obligaba al usuario a inventarlo y provocaba duplicados.
+   */
   const [formulario, setFormulario] = useState({
     nombre: "",
-    codigo: "",
     tipo: "digital_out",
   });
   const [errorLocal, setErrorLocal] = useState<Error | null>(null);
 
   async function guardarActuador() {
-    if (!formulario.nombre.trim() || !formulario.codigo.trim()) return;
+    if (!formulario.nombre.trim()) return;
     setGuardando(true);
     setErrorLocal(null);
     try {
       await crearActuador({
         dispositivo_id: dispositivoId,
         nombre: formulario.nombre.trim(),
-        codigo: formulario.codigo.trim(),
         tipo: formulario.tipo.trim(),
         activo: true,
       });
       onCreado();
       setModalAbierto(false);
-      setFormulario({ nombre: "", codigo: "", tipo: "digital_out" });
+      setFormulario({ nombre: "", tipo: "digital_out" });
     } catch (e) {
       setErrorLocal(e instanceof Error ? e : new Error(String(e)));
     } finally {
@@ -369,17 +371,11 @@ function ResumenActuadores({
                 }
               />
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="act-codigo">Código</Label>
-              <Input
-                id="act-codigo"
-                placeholder="Ej. RELE-Q2"
-                value={formulario.codigo}
-                onChange={(e) =>
-                  setFormulario((p) => ({ ...p, codigo: e.target.value }))
-                }
-              />
-            </div>
+            <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+              El <strong>código</strong> lo genera el servidor a partir del
+              tipo y el nombre (por ejemplo, <code>DIGITAL-OUT-RELE-Q2</code>).
+              No hace falta inventarlo.
+            </p>
             <div className="grid gap-1.5">
               <Label htmlFor="act-tipo">Tipo</Label>
               <Input

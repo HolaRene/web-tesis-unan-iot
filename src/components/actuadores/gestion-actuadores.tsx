@@ -20,19 +20,34 @@
  */
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, Loader2, Power, RadioTower, ToggleRight } from "lucide-react";
+import {
+  AlertCircle,
+  Loader2,
+  Pencil,
+  Plus,
+  Power,
+  RadioTower,
+  ToggleRight,
+  Trash2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { FormularioActuador } from "@/components/actuadores/formulario-actuador";
 
 import {
   listarActuadores,
   enviarComando,
   listarComandosDeActuador,
+  crearActuador,
+  actualizarActuador,
+  eliminarActuador,
+  type DatosActuador,
 } from "@/servicios/actuadores.servicio";
+import { listarDispositivos } from "@/servicios/dispositivos.servicio";
 import { useSesion } from "@/hooks/use-sesion";
 import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
 import { formatearFecha, haceTiempo } from "@/utilidades";
@@ -53,8 +68,67 @@ export function GestionActuadores() {
 
   const actuadores = useMemo(() => actuadoresQ.data ?? [], [actuadoresQ.data]);
 
+  /*
+   * Dispositivos para el desplegable del formulario.
+   *
+   * El formulario NO se monta hasta que esta consulta termina: inicializa su
+   * estado con los dispositivos, y `useState` solo lee el valor inicial en el
+   * primer render. Montarlo antes dejaba el desplegable vacío para siempre.
+   * Ver `docs/formularios-carga-asincrona.md`.
+   */
+  const dispositivosQ = useQuery({
+    queryKey: ["dispositivos"],
+    queryFn: () => listarDispositivos(),
+  });
+
   const [seleccionado, setSeleccionado] = useState<Actuador | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+
+  // Estado del formulario de alta y edición.
+  const [formAbierto, setFormAbierto] = useState(false);
+  const [enEdicion, setEnEdicion] = useState<Actuador | null>(null);
+  const [errorForm, setErrorForm] = useState<string | null>(null);
+  const [borrando, setBorrando] = useState<Actuador | null>(null);
+
+  function abrirCrear() {
+    setEnEdicion(null);
+    setErrorForm(null);
+    setFormAbierto(true);
+  }
+
+  function abrirEditar(a: Actuador) {
+    setEnEdicion(a);
+    setErrorForm(null);
+    setFormAbierto(true);
+  }
+
+  const mutGuardar = useMutation({
+    mutationFn: (datos: DatosActuador) =>
+      enEdicion
+        ? actualizarActuador(enEdicion.id, datos)
+        : crearActuador(datos),
+    onSuccess: (guardado) => {
+      setAviso(
+        enEdicion
+          ? `Actuador «${guardado.nombre}» actualizado.`
+          : `Actuador «${guardado.nombre}» creado con el código ${guardado.codigo}.`
+      );
+      setFormAbierto(false);
+      setEnEdicion(null);
+      queryClient.invalidateQueries({ queryKey: ["actuadores"] });
+      setTimeout(() => setAviso(null), 6000);
+    },
+    onError: (e: Error) => setErrorForm(e.message),
+  });
+
+  const mutEliminar = useMutation({
+    mutationFn: (id: string) => eliminarActuador(id),
+    onSuccess: () => {
+      setBorrando(null);
+      queryClient.invalidateQueries({ queryKey: ["actuadores"] });
+    },
+    onError: (e: Error) => setAviso(`No se pudo eliminar: ${e.message}`),
+  });
 
   const mutEnviar = useMutation({
     mutationFn: ({
@@ -90,12 +164,21 @@ export function GestionActuadores() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold">Actuadores</h1>
-        <p className="text-sm text-muted-foreground">
-          Salidas controlables (relés, válvulas, motores). Al enviar un comando,
-          la orden se encola y Node-RED la entrega al equipo.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Actuadores</h1>
+          <p className="text-sm text-muted-foreground">
+            Salidas controlables (relés, válvulas, motores). Al enviar un comando,
+            la orden se encola y Node-RED la entrega al equipo.
+          </p>
+        </div>
+
+        {puedeEscribir ? (
+          <Button onClick={abrirCrear}>
+            <Plus className="size-4" aria-hidden />
+            Nuevo actuador
+          </Button>
+        ) : null}
       </div>
 
       {aviso ? (
@@ -131,10 +214,70 @@ export function GestionActuadores() {
                 mutEnviar.mutate({ actuadorId: a.id, comando })
               }
               onVerHistorial={() => setSeleccionado(a)}
+              onEditar={() => abrirEditar(a)}
+              onEliminar={() => setBorrando(a)}
             />
           ))}
         </div>
       )}
+
+      {/*
+        El formulario solo se monta cuando los dispositivos están cargados.
+        Montarlo antes dejaría el desplegable vacío: su estado inicial se
+        congela en el primer render.
+      */}
+      {dispositivosQ.isLoading ? null : (
+        <FormularioActuador
+          key={enEdicion?.id ?? "nuevo"}
+          abierto={formAbierto}
+          actuador={enEdicion}
+          dispositivos={dispositivosQ.data ?? []}
+          enviando={mutGuardar.isPending}
+          error={errorForm}
+          onOpenChange={(val) => {
+            setFormAbierto(val);
+            if (!val) {
+              setEnEdicion(null);
+              setErrorForm(null);
+            }
+          }}
+          onGuardar={(datos) => mutGuardar.mutate(datos)}
+        />
+      )}
+
+      {/* Confirmación de borrado */}
+      {borrando ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              ¿Eliminar «{borrando.nombre}»?
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Se eliminará el actuador y su código{" "}
+              <code>{borrando.codigo}</code>. Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                disabled={mutEliminar.isPending}
+                onClick={() => mutEliminar.mutate(borrando.id)}
+              >
+                {mutEliminar.isPending ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <Trash2 className="size-4" aria-hidden />
+                )}
+                Eliminar
+              </Button>
+              <Button variant="ghost" onClick={() => setBorrando(null)}>
+                Cancelar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {seleccionado ? (
         <HistorialComandos
@@ -153,12 +296,16 @@ function TarjetaActuador({
   enviando,
   onComando,
   onVerHistorial,
+  onEditar,
+  onEliminar,
 }: {
   actuador: Actuador;
   puedeEscribir: boolean;
   enviando: boolean;
   onComando: (comando: string) => void;
   onVerHistorial: () => void;
+  onEditar: () => void;
+  onEliminar: () => void;
 }) {
   const estado = (actuador.estado_actual ?? "").toLowerCase();
   const encendido = estado === "on" || estado === "abierto" || estado === "activo";
@@ -183,6 +330,28 @@ function TarjetaActuador({
             </Badge>
             {!actuador.activo ? (
               <Badge variant="outline">Desactivado</Badge>
+            ) : null}
+            {puedeEscribir ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Editar actuador"
+                  title="Editar"
+                  onClick={onEditar}
+                >
+                  <Pencil className="size-4" aria-hidden />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Eliminar actuador"
+                  title="Eliminar"
+                  onClick={onEliminar}
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </Button>
+              </>
             ) : null}
           </div>
         </div>
