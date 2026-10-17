@@ -35,6 +35,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -94,7 +95,7 @@ export function PanelActividad() {
       };
     },
     // La actividad no necesita tiempo real: con un minuto basta.
-    refetchInterval: 60_000,
+    refetchInterval: POLLING_RESPALDO_MS,
     staleTime: 30_000,
   });
 

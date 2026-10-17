@@ -7,7 +7,7 @@ import {
   Cable,
   Wifi,
   Workflow,
-  Cloud,
+  Video,
 } from "lucide-react";
 
 import {
@@ -28,11 +28,13 @@ const tecnologias = [
   { nombre: "Node.js", detalle: "Runtime del backend.", icono: Server },
   { nombre: "Express", detalle: "API REST del backend.", icono: Server },
   { nombre: "PostgreSQL", detalle: "Base de datos relacional.", icono: Database },
+  { nombre: "WebSocket", detalle: "Tiempo real hacia el navegador.", icono: Wifi },
   { nombre: "OpenPLC", detalle: "Automatización industrial.", icono: Cable },
-  { nombre: "Modbus TCP", detalle: "Protocolo industrial.", icono: Cable },
-  { nombre: "MQTT", detalle: "Protocolo IoT.", icono: Wifi },
+  { nombre: "Modbus TCP/RTU", detalle: "Lectura y escritura en PLC.", icono: Cable },
+  { nombre: "MQTT", detalle: "Protocolo IoT para equipos.", icono: Wifi },
   { nombre: "Node-RED", detalle: "Middleware de integración.", icono: Workflow },
-  { nombre: "ThingsBoard", detalle: "Interoperabilidad cloud.", icono: Cloud },
+  { nombre: "MediaMTX", detalle: "Servidor de vídeo RTSP.", icono: Video },
+  { nombre: "WebRTC", detalle: "Reproducción de cámara en el navegador.", icono: Video },
 ];
 
 export default function PaginaTecnologias() {

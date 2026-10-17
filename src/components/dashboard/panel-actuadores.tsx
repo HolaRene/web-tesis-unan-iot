@@ -38,6 +38,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,7 +54,7 @@ import { haceTiempo } from "@/utilidades";
 import type { Actuador } from "@/tipos";
 
 /** Cada cuánto se refresca el estado (el comando lo confirma el equipo). */
-const REFRESCO_MS = 30_000;
+const REFRESCO_MS = POLLING_RESPALDO_MS;
 
 export function PanelActuadores() {
   const queryClient = useQueryClient();

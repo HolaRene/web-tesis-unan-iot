@@ -12,9 +12,9 @@ export default function PaginaIntegraciones() {
       titulo="Integraciones"
       descripcion="Gestión de integraciones: plataforma, tipo, dispositivo relacionado y estado."
       pendientes={[
-        "ThingsBoard Cloud como primera integración externa de demostración.",
-        "Tabla de integraciones y estado.",
-        "Configuración de integraciones.",
+        "Tabla de integraciones con estado y última sincronización.",
+        "Configuración de credenciales de cada plataforma externa.",
+        "Prueba de conexión desde la propia interfaz.",
       ]}
     />
   );

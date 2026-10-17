@@ -41,6 +41,7 @@ import { PanelMagnitudes } from "@/components/dashboard/panel-magnitudes";
 import { PanelActividad } from "@/components/dashboard/panel-actividad";
 import { PanelActuadores } from "@/components/dashboard/panel-actuadores";
 import { useResumenDashboard } from "@/hooks/use-resumen-dashboard";
+import { useEventosDashboard } from "@/hooks/use-eventos-dashboard";
 import {
   formatearFecha,
   formatearValor,
@@ -51,6 +52,16 @@ import {
 import { cn } from "@/lib/utils";
 
 export function PanelDashboard() {
+  /*
+   * El panel se suscribe al WebSocket.
+   *
+   * Los hooks de `mediciones` / `dispositivos` / `alertas` parchean las
+   * listas de esos módulos, pero el dashboard usa claves propias
+   * (`dashboard/resumen`, `canales-dashboard`, `mini-serie`), así que sin
+   * esto se quedaba congelado: llegaban datos y el panel no cambiaba.
+   */
+  useEventosDashboard();
+
   const resumen = useResumenDashboard();
 
   const metricas = [

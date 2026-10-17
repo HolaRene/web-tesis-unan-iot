@@ -2,7 +2,7 @@
  * Servicio de datos de Integraciones.
  *
  * Endpoint real del backend: /api/v1/integrations
- * La primera integración externa de demostración será ThingsBoard Cloud.
+ * Permite registrar plataformas externas a las que publicar los datos.
  */
 import { api } from "./api";
 import type { Integracion } from "@/tipos";

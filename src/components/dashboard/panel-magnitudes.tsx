@@ -36,6 +36,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -67,7 +68,7 @@ type Filtro = "todas" | "frescas" | "antiguas";
 /** Cada cuánto se recalcula la antigüedad mostrada (30 s). */
 const REFRESCO_ANTIGUEDAD_MS = 30_000;
 /** Cada cuánto se vuelven a pedir los valores a la API (60 s). */
-const REFRESCO_DATOS_MS = 60_000;
+const REFRESCO_DATOS_MS = POLLING_RESPALDO_MS;
 
 export function PanelMagnitudes() {
   const [filtro, setFiltro] = useState<Filtro>("todas");

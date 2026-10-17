@@ -9,11 +9,16 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, RadioTower, Loader2 } from "lucide-react";
+import { Plus, RadioTower } from "lucide-react";
 
 import { obtenerDispositivo } from "@/servicios/dispositivos.servicio";
 import { listarSensores } from "@/servicios/sensores.servicio";
-import { listarActuadores, crearActuador } from "@/servicios/actuadores.servicio";
+import {
+  listarActuadores,
+  crearActuador,
+  type DatosActuador,
+} from "@/servicios/actuadores.servicio";
+import { FormularioActuador } from "@/components/actuadores/formulario-actuador";
 import { useSesion } from "@/hooks/use-sesion";
 import { useEventosDispositivos } from "@/hooks/use-eventos-dispositivos";
 import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
@@ -21,8 +26,6 @@ import type { Actuador, Dispositivo } from "@/tipos";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -35,13 +38,6 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   formatearFecha,
   haceTiempo,
@@ -176,6 +172,7 @@ export function DetalleDispositivo({ id }: { id: string }) {
           <TabsContent value="actuadores" className="pt-4">
             <ResumenActuadores
               dispositivoId={id}
+              dispositivos={dispositivo ? [dispositivo] : []}
               actuadores={actuadoresDel}
               cargando={actuadoresQ.isLoading}
               error={actuadoresQ.error as Error | null}
@@ -251,6 +248,7 @@ function TarjetaEstado({ dispositivo }: { dispositivo: Dispositivo }) {
 
 function ResumenActuadores({
   dispositivoId,
+  dispositivos,
   actuadores,
   cargando,
   error,
@@ -258,6 +256,8 @@ function ResumenActuadores({
   onCreado,
 }: {
   dispositivoId: string;
+  /** El propio dispositivo, para el desplegable del formulario completo. */
+  dispositivos: Dispositivo[];
   actuadores: Actuador[];
   cargando: boolean;
   error: Error | null;
@@ -266,32 +266,29 @@ function ResumenActuadores({
 }) {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
-  /*
-   * Sin `codigo`: lo genera el servidor desde el tipo y el nombre. Pedirlo
-   * aquí obligaba al usuario a inventarlo y provocaba duplicados.
-   */
-  const [formulario, setFormulario] = useState({
-    nombre: "",
-    tipo: "digital_out",
-  });
-  const [errorLocal, setErrorLocal] = useState<Error | null>(null);
+  const [errorLocal, setErrorLocal] = useState<string | null>(null);
 
-  async function guardarActuador() {
-    if (!formulario.nombre.trim()) return;
+  /*
+   * Se reutiliza el MISMO formulario que la página de Actuadores.
+   *
+   * Antes había aquí un mini-formulario propio que solo pedía nombre y tipo.
+   * Al añadir el direccionamiento (protocolo, dirección Modbus, pin GPIO…)
+   * se quedó atrás: creaba actuadores SIEMPRE como `mqtt` y sin dirección,
+   * así que nunca se podían accionar desde un PLC.
+   *
+   * Mantener dos formularios para la misma entidad garantiza que uno se
+   * quede obsoleto. Con uno solo, cualquier campo nuevo aparece en los dos
+   * sitios a la vez.
+   */
+  async function guardarActuador(datos: DatosActuador) {
     setGuardando(true);
     setErrorLocal(null);
     try {
-      await crearActuador({
-        dispositivo_id: dispositivoId,
-        nombre: formulario.nombre.trim(),
-        tipo: formulario.tipo.trim(),
-        activo: true,
-      });
+      await crearActuador({ ...datos, dispositivo_id: dispositivoId });
       onCreado();
       setModalAbierto(false);
-      setFormulario({ nombre: "", tipo: "digital_out" });
     } catch (e) {
-      setErrorLocal(e instanceof Error ? e : new Error(String(e)));
+      setErrorLocal(e instanceof Error ? e.message : String(e));
     } finally {
       setGuardando(false);
     }
@@ -353,61 +350,24 @@ function ResumenActuadores({
         )}
       </CardContent>
 
-      {/* Diálogo para crear actuador */}
-      <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nuevo actuador</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="act-nombre">Nombre</Label>
-              <Input
-                id="act-nombre"
-                placeholder="Ej. Relé ventilación"
-                value={formulario.nombre}
-                onChange={(e) =>
-                  setFormulario((p) => ({ ...p, nombre: e.target.value }))
-                }
-              />
-            </div>
-            <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-              El <strong>código</strong> lo genera el servidor a partir del
-              tipo y el nombre (por ejemplo, <code>DIGITAL-OUT-RELE-Q2</code>).
-              No hace falta inventarlo.
-            </p>
-            <div className="grid gap-1.5">
-              <Label htmlFor="act-tipo">Tipo</Label>
-              <Input
-                id="act-tipo"
-                placeholder="digital_out, relay, buzzer…"
-                value={formulario.tipo}
-                onChange={(e) =>
-                  setFormulario((p) => ({ ...p, tipo: e.target.value }))
-                }
-              />
-            </div>
-            {errorLocal && (
-              <p className="text-sm text-destructive">{errorLocal.message}</p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setModalAbierto(false)}
-            >
-              Cancelar
-            </Button>
-            <Button type="button" onClick={guardarActuador} disabled={guardando}>
-              {guardando ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-              ) : null}
-              Crear actuador
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/*
+        Formulario completo, el MISMO que la pagina de Actuadores.
+
+        Se reutiliza en lugar de mantener un mini-formulario propio: aquel
+        se quedo sin el direccionamiento y creaba actuadores sin direccion.
+      */}
+      <FormularioActuador
+        abierto={modalAbierto}
+        actuador={null}
+        dispositivos={dispositivos}
+        enviando={guardando}
+        error={errorLocal}
+        onOpenChange={(val) => {
+          setModalAbierto(val);
+          if (!val) setErrorLocal(null);
+        }}
+        onGuardar={guardarActuador}
+      />
     </Card>
   );
 }

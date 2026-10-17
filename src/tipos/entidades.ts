@@ -246,7 +246,7 @@ export interface Camara {
   dispositivo_identificador?: string | null;
 }
 
-/** Integración externa (ej. ThingsBoard Cloud). GET /api/v1/integrations */
+/** Integración externa (ej. una plataforma cloud). GET /api/v1/integrations */
 export interface Integracion {
   id: string;
   dispositivo_id: string | null;

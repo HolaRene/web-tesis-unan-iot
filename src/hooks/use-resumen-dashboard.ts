@@ -16,6 +16,7 @@ import { useMemo, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { Alerta, Area, Dispositivo, MedicionConSensor, Sensor } from "@/tipos";
 import { obtenerResumenDashboard } from "@/servicios/dashboard.servicio";
+import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
 
 /** Punto de una serie temporal para el gráfico de actividad. */
 export interface PuntoActividad {
@@ -53,6 +54,22 @@ export function useResumenDashboard(): ResumenDashboard {
   const consulta = useQuery({
     queryKey: ["dashboard", "resumen"],
     queryFn: obtenerResumenDashboard,
+    /*
+     * POLLING DE RESPALDO.
+     *
+     * La actualización normal llega por WebSocket (`useEventosDashboard`), que
+     * invalida esta clave en cuanto entra una medición o cambia un equipo.
+     *
+     * Pero si el WebSocket no está disponible —red restrictiva, proxy que
+     * corta conexiones, servidor reiniciado— el panel se quedaría congelado
+     * sin que el usuario lo supiera. Este intervalo es la red de seguridad:
+     * cada 90 segundos se pregunta igualmente.
+     *
+     * 90 s y no 10 s para no generar carga innecesaria: en condiciones
+     * normales el WebSocket llega mucho antes y esta consulta casi nunca
+     * aporta nada nuevo.
+     */
+    refetchInterval: POLLING_RESPALDO_MS,
   });
 
   const cargando = consulta.isLoading;
