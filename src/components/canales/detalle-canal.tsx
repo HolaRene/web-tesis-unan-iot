@@ -5,10 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import { obtenerCanalPorId } from "@/servicios/canales.servicio";
 import { obtenerReglas } from "@/servicios/reglas-alerta.servicio";
 import { useEventosMediciones } from "@/hooks/use-eventos-mediciones";
+import { useSesion } from "@/hooks/use-sesion";
 import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
 import { PanelHistorial } from "@/components/graficos/panel-historial";
 import FormularioRegla from "@/components/reglas-alerta/formulario-regla";
 import { ListaReglasCanal } from "@/components/reglas-alerta/lista-reglas-canal";
+import { SelectorPlantilla } from "@/components/reglas-alerta/selector-plantilla";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +19,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 export function DetalleCanal({ id }: { id: string }) {
   // El WS añade los puntos nuevos a la serie y parchea el último valor.
   useEventosMediciones();
+
+  /*
+   * Aplicar una plantilla CREA reglas, así que es una escritura: los
+   * usuarios de solo lectura no deben ver el botón (la API lo rechazaría
+   * con 403 de todos modos).
+   */
+  const { usuario } = useSesion();
+  const puedeEscribir = usuario?.rol === "usuario" || usuario?.rol === "admin";
 
   const canalQ = useQuery({
     queryKey: ["canal", id],
@@ -90,6 +100,8 @@ export function DetalleCanal({ id }: { id: string }) {
             unidad={canal.unidad}
             tipoDato={canal.tipo_dato}
           />
+
+          {puedeEscribir ? <SelectorPlantilla canalId={canal.id} /> : null}
 
           <FormularioRegla canal={canal} />
         </>
