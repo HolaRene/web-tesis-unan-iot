@@ -8,6 +8,7 @@ import { useEventosMediciones } from "@/hooks/use-eventos-mediciones";
 import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
 import { PanelHistorial } from "@/components/graficos/panel-historial";
 import FormularioRegla from "@/components/reglas-alerta/formulario-regla";
+import { ListaReglasCanal } from "@/components/reglas-alerta/lista-reglas-canal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -83,40 +84,16 @@ export function DetalleCanal({ id }: { id: string }) {
             </Card>
           )}
 
-          <ReglasCanal reglas={reglasQ.data ?? []} cargando={reglasQ.isLoading} />
+          <ListaReglasCanal
+            reglas={reglasQ.data ?? []}
+            cargando={reglasQ.isLoading}
+            unidad={canal.unidad}
+            tipoDato={canal.tipo_dato}
+          />
 
           <FormularioRegla canal={canal} />
         </>
       ) : null}
     </div>
-  );
-}
-
-/** Lista breve de reglas del canal. */
-function ReglasCanal({ reglas, cargando }: { reglas: Array<{ id: string; nombre: string; operador: string; severidad: string; activa: boolean }>; cargando: boolean }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Reglas de alerta</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {cargando ? <Skeleton className="h-8 w-full" /> : reglas.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sin reglas para este canal.</p>
-        ) : (
-          <ul className="space-y-2">
-            {reglas.map((r) => (
-              <li key={r.id} className="flex items-center justify-between rounded-lg border px-3 py-1.5 text-sm">
-                <span>
-                  <strong>{r.nombre}</strong> · {r.operador}
-                </span>
-                <Badge variant={r.activa ? "secondary" : "outline"}>
-                  {r.severidad} {r.activa ? "" : "· inactiva"}
-                </Badge>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
   );
 }
