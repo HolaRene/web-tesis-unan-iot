@@ -11,7 +11,6 @@ import { Pencil, Trash2, MapPin, Network, Clock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { EstadoCamaraBadge } from "@/components/camaras/estado-camara";
 import { PreviewCamara } from "@/components/camaras/preview-camara";
 import { formatearFecha } from "@/utilidades";
 import type { Camara } from "@/tipos";
@@ -46,7 +45,12 @@ export function CamaraCard({ camara, onEditar, onEliminar }: CamaraCardProps) {
               {camara.ruta_webrtc ?? "sin ruta WebRTC"}
             </code>
           </div>
-          <EstadoCamaraBadge estado={camara.estado} />
+          {/*
+            Aquí iba el badge de estado. Se quitó por el mismo motivo que en
+            el detalle: `camaras.estado` no se actualiza solo, así que
+            mostraba «Desconectada» de forma permanente aunque la cámara
+            funcionara. El estado real de conexión lo da el reproductor.
+          */}
         </div>
 
         <div className="space-y-1 text-sm text-muted-foreground">

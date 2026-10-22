@@ -17,7 +17,6 @@ import { ArrowLeft, MapPin } from "lucide-react";
 import { useCamara, useActualizarEstadoCamara } from "@/hooks/useCamaras";
 import { CamaraPlayer } from "@/components/camaras/camara-player";
 import { CamaraDetalles } from "@/components/camaras/camara-detalles";
-import { EstadoCamaraBadge } from "@/components/camaras/estado-camara";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -74,20 +73,22 @@ export function DetalleCamara({ id }: { id: string }) {
         </div>
 
         {/*
-          Solo se muestra el estado, sin selector.
+          El estado de la cámara YA NO SE MUESTRA.
 
-          Se quitó el desplegable que permitía cambiarlo a mano: el estado de
-          una cámara (conectada / desconectada / error) lo determina la
-          conexión real con el stream, no una elección del usuario. Poder
-          ponerlo a mano producía justo la contradicción de antes: «En
-          directo» con estado «Desconectada», o al revés.
+          Motivo: no se mantiene actualizado. La columna `camaras.estado` solo
+          cambia si algo la escribe (PATCH /cameras/:id/estado), y nada la
+          actualiza automáticamente al conectar o desconectar el stream. El
+          resultado era un indicador permanente en «Desconectada» aunque el
+          vídeo funcionara.
 
-          El endpoint PATCH /cameras/:id/estado sigue existiendo para que un
-          proceso de monitorización lo actualice según el estado real.
+          Un dato que se queda obsoleto es peor que no mostrarlo: induce a
+          error. El reproductor ya informa del estado real de la conexión
+          («Conectando», «Sin stream», «Error»), y ese sí es fiable porque
+          sale de la propia negociación WebRTC.
+
+          Si más adelante un proceso de monitorización mantiene el campo al
+          día, se puede volver a mostrar.
         */}
-        <div className="flex items-center gap-2">
-          <EstadoCamaraBadge estado={camara.estado} />
-        </div>
       </div>
 
       {cambiarEstado.isError && (
