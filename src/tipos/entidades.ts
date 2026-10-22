@@ -24,7 +24,43 @@ export interface Area {
   descripcion: string | null;
   ubicacion: string | null;
   activo: boolean;
+  /** Perfil normativo del recinto (id de plantilla). */
+  perfil_alerta?: string | null;
   creado_en: string;
+}
+
+/** Cumplimiento de una magnitud frente al perfil normativo del área. */
+export interface CumplimientoMagnitud {
+  tipo_codigo: string;
+  tipo_nombre: string;
+  unidad: string | null;
+  valor: number | null;
+  medido_en: string | null;
+  estado: 'cumple' | 'fuera' | 'sin_datos' | 'sin_regla';
+  banda: string | null;
+  minimo: number | null;
+  maximo: number | null;
+  cubierta: boolean;
+  requiere_verificacion: boolean;
+}
+
+/** GET /api/v1/areas/:id/cumplimiento */
+export interface CumplimientoArea {
+  area: { id: string; nombre: string; perfil_alerta: string | null };
+  perfil: {
+    id: string;
+    nombre: string;
+    norma: string;
+    notas: string[];
+  } | null;
+  magnitudes: CumplimientoMagnitud[];
+  resumen: {
+    total: number;
+    cumple: number;
+    fuera: number;
+    sin_datos: number;
+    sin_regla: number;
+  };
 }
 
 /** Dispositivo (PLC, ESP32, gateway, cámara IP, etc.). GET /api/v1/devices */

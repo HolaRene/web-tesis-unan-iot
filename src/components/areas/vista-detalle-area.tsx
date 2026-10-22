@@ -37,6 +37,7 @@ import {
   ToggleRight,
 } from "lucide-react";
 
+import { CumplimientoArea } from "@/components/areas/cumplimiento-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -209,6 +210,13 @@ export function VistaDetalleArea({ id }: { id: string }) {
           detalle={`${actuadores.length} actuadores`}
         />
       </div>
+
+      {/*
+        Cumplimiento normativo: compara el último valor de cada magnitud con
+        la banda del perfil declarado en el área. Es lo que responde «¿se está
+        aplicando la norma aquí?».
+      */}
+      <CumplimientoArea areaId={id} />
 
       {/* Dispositivos */}
       <Card>

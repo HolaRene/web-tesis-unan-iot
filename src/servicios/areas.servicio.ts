@@ -9,7 +9,7 @@
  *   DELETE /:id               -> eliminar
  */
 import { api } from "./api";
-import type { Area } from "@/tipos";
+import type { Area, CumplimientoArea } from "@/tipos";
 
 /** Lista todas las áreas. */
 export async function listarAreas(): Promise<Area[]> {
@@ -41,4 +41,17 @@ export async function actualizarArea(
 /** Elimina un área por su id. */
 export async function eliminarArea(id: string): Promise<void> {
   await api.eliminar(`/areas/${id}`);
+}
+
+/**
+ * Cumplimiento normativo del área.
+ *
+ * Devuelve, por cada magnitud, el último valor medido frente a la banda del
+ * perfil declarado en el área.
+ */
+export async function obtenerCumplimientoArea(
+  id: string
+): Promise<CumplimientoArea> {
+  const r = await api.obtener<CumplimientoArea>(`/areas/${id}/cumplimiento`);
+  return r.datos;
 }

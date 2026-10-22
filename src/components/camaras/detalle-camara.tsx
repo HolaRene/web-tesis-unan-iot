@@ -21,31 +21,10 @@ import { EstadoCamaraBadge } from "@/components/camaras/estado-camara";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { tieneStreamConfigurado, urlWhep } from "@/configuracion/video";
-import { useSesion } from "@/hooks/use-sesion";
-import type { EstadoCamara } from "@/tipos";
 
-/** Estados seleccionables manualmente (para pruebas). */
-const ESTADOS: EstadoCamara[] = [
-  "activa",
-  "inactiva",
-  "conectada",
-  "desconectada",
-  "error",
-];
 
 export function DetalleCamara({ id }: { id: string }) {
-  const { usuario } = useSesion();
-  const puedeEscribir =
-    usuario?.rol === "usuario" || usuario?.rol === "admin";
-
   const { data: camara, isLoading, error } = useCamara(id);
   const cambiarEstado = useActualizarEstadoCamara();
 
@@ -94,27 +73,20 @@ export function DetalleCamara({ id }: { id: string }) {
           )}
         </div>
 
+        {/*
+          Solo se muestra el estado, sin selector.
+
+          Se quitó el desplegable que permitía cambiarlo a mano: el estado de
+          una cámara (conectada / desconectada / error) lo determina la
+          conexión real con el stream, no una elección del usuario. Poder
+          ponerlo a mano producía justo la contradicción de antes: «En
+          directo» con estado «Desconectada», o al revés.
+
+          El endpoint PATCH /cameras/:id/estado sigue existiendo para que un
+          proceso de monitorización lo actualice según el estado real.
+        */}
         <div className="flex items-center gap-2">
           <EstadoCamaraBadge estado={camara.estado} />
-          {puedeEscribir && (
-            <Select
-              value={camara.estado}
-              onValueChange={(valor) =>
-                cambiarEstado.mutate({ id: camara.id, estado: valor as EstadoCamara })
-              }
-            >
-              <SelectTrigger className="w-44" aria-label="Cambiar estado">
-                <SelectValue placeholder="Cambiar estado" />
-              </SelectTrigger>
-              <SelectContent>
-                {ESTADOS.map((estado) => (
-                  <SelectItem key={estado} value={estado}>
-                    {estado}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
         </div>
       </div>
 

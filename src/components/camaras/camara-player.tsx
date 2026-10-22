@@ -317,10 +317,16 @@ export function CamaraPlayer({
       {/* Controles cuando hay reproducción. */}
       {estado === "reproduciendo" && (
         <div className="absolute bottom-3 right-3 flex items-center gap-2">
-          <span className="flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-xs text-white">
-            <Video className="size-3.5" aria-hidden />
-            En directo
-          </span>
+          {/*
+            Antes había aquí una etiqueta «En directo».
+
+            Se quitó porque contradecía al estado: la tarjeta podía mostrar
+            «Desconectada» (el estado registrado de la cámara) mientras el
+            vídeo se estaba reproduciendo. Dos indicadores de estado en la
+            misma pantalla, diciendo cosas distintas.
+
+            Además era redundante: si se ve el vídeo, es que está en directo.
+          */}
           {/*
             Pantalla completa. El botón solo aparece con el vídeo en marcha:
             ampliar un stream que no funciona no aporta nada.
