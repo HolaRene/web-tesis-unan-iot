@@ -12,7 +12,7 @@
  * de MediaMTX mediante la capa de configuración de vídeo.
  */
 import Link from "next/link";
-import { ArrowLeft, MapPin, RefreshCw } from "lucide-react";
+import { ArrowLeft, MapPin } from "lucide-react";
 
 import { useCamara, useActualizarEstadoCamara } from "@/hooks/useCamaras";
 import { CamaraPlayer } from "@/components/camaras/camara-player";
@@ -123,12 +123,17 @@ export function DetalleCamara({ id }: { id: string }) {
           <MapPin className="size-3.5" aria-hidden />
           {camara.area_nombre ?? "Sin área"}
         </span>
-        <span className="flex items-center gap-2">
-          <RefreshCw className="size-3.5" aria-hidden />
-          {camara.estado === "conectada"
-            ? "Conectada"
-            : "Sin conexión activa"}
-        </span>
+        {/*
+          Nota: aquí había un SEGUNDO indicador de estado, que mostraba
+          «Conectada» o «Sin conexión activa» según el estado del badge.
+
+          Producía dos etiquetas distintas para el mismo dato en la misma
+          pantalla («Desconectada» arriba, «Sin conexión activa» abajo), y
+          además confundía «Error» con «sin conexión», que no son lo mismo:
+          una cámara puede estar conectada y devolver error de vídeo.
+
+          El estado se muestra una sola vez, en el badge de la cabecera.
+        */}
       </div>
 
       <CamaraDetalles camara={camara} />
