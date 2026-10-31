@@ -2,6 +2,7 @@
  * Configuración de los ítems de navegación del panel.
  */
 import {
+  BookOpen,
   Activity,
   AlertTriangle,
   Camera,
@@ -29,6 +30,7 @@ export const itemsNavegacionPanel: ItemNavegacion[] = [
   { href: "/sensores", etiqueta: "Sensores", icono: Activity },
   { href: "/canales", etiqueta: "Canales", icono: Gauge },
   { href: "/mediciones", etiqueta: "Mediciones", icono: Activity },
+  { href: "/normas", etiqueta: "Normas", icono: BookOpen },
   { href: "/alertas", etiqueta: "Alertas", icono: AlertTriangle },
   { href: "/actuadores", etiqueta: "Actuadores", icono: ToggleRight },
   { href: "/camaras", etiqueta: "Cámaras", icono: Camera },

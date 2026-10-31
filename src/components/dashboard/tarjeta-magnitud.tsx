@@ -23,6 +23,9 @@ import { TrendingUp } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { BadgeNivel } from "@/components/nivel/badge-nivel";
+import { cn } from "@/lib/utils";
+import type { NivelMedicion } from "@/tipos";
 import { MiniGrafico } from "@/components/graficos/mini-grafico";
 import { api } from "@/servicios/api";
 import {
@@ -60,6 +63,14 @@ export interface MagnitudActual {
   registradoEn?: string | null;
   /** Nombre del dispositivo al que pertenece. */
   dispositivoNombre?: string | null;
+  /**
+   * Nivel del valor según las reglas del canal.
+   *
+   * NO confundir con la frescura (¿llegan datos?). Aquí se responde «¿el
+   * valor está bien?», y son dos semáforos independientes: un valor puede
+   * llegar puntualísimo y estar fuera de norma.
+   */
+  nivel?: NivelMedicion;
 }
 
 interface TarjetaMagnitudProps {
@@ -135,8 +146,21 @@ export function TarjetaMagnitud({
         : "No"
       : (magnitud.valorTexto ?? "—");
 
+  /*
+   * Borde de color según el nivel. Solo en los niveles que exigen mirada:
+   * pintar de verde todas las tarjetas correctas las volvería ruido.
+   */
+  const bordeNivel =
+    magnitud.nivel === "critico"
+      ? "border-red-500/50"
+      : magnitud.nivel === "advertencia"
+        ? "border-amber-500/50"
+        : magnitud.nivel === "falla"
+          ? "border-slate-400/60"
+          : "";
+
   return (
-    <Card className="@container/card">
+    <Card className={cn("@container/card", bordeNivel)}>
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
@@ -171,11 +195,18 @@ export function TarjetaMagnitud({
 
         <div className="flex items-baseline justify-between gap-2">
           <p className="text-2xl font-semibold tabular-nums">{valorMostrado}</p>
-          {magnitud.unidad && esNumerico ? (
-            <Badge variant="outline" className="text-xs">
-              {magnitud.unidad}
-            </Badge>
-          ) : null}
+          <div className="flex items-center gap-1.5">
+            {magnitud.unidad && esNumerico ? (
+              <Badge variant="outline" className="text-xs">
+                {magnitud.unidad}
+              </Badge>
+            ) : null}
+            {/*
+              Icono + texto, no solo color: este panel puede ir en una
+              pantalla de pared y verse de lejos.
+            */}
+            <BadgeNivel nivel={magnitud.nivel} />
+          </div>
         </div>
 
         {conGrafico && esNumerico ? (

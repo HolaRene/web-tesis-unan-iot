@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { BadgeNivel } from "@/components/nivel/badge-nivel";
 
 export function DetalleCanal({ id }: { id: string }) {
   // El WS añade los puntos nuevos a la serie y parchea el último valor.
@@ -85,11 +86,12 @@ export function DetalleCanal({ id }: { id: string }) {
           ) : (
             <Card>
               <CardHeader><CardTitle className="text-base">Último valor</CardTitle></CardHeader>
-              <CardContent>
+              <CardContent className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-3xl font-semibold">
                   {canal.ultimo_valor_numerico ?? canal.ultimo_valor_texto ?? "—"}
                   {canal.unidad ? ` ${canal.unidad}` : ""}
                 </p>
+                <BadgeNivel nivel={canal.ultimo_nivel} tamano="md" />
               </CardContent>
             </Card>
           )}

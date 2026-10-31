@@ -23,6 +23,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatearFecha } from "@/utilidades";
+import { BadgeNivel } from "@/components/nivel/badge-nivel";
 
 export function HistorialMediciones() {
   const [limite, setLimite] = useState(100);
@@ -99,7 +100,13 @@ export function HistorialMediciones() {
                 <TableHead>ID</TableHead>
                 <TableHead>Sensor (ID)</TableHead>
                 <TableHead>Valor</TableHead>
-                <TableHead>Calidad</TableHead>
+                {/*
+                  «Nivel» antes que «Calidad»: lo que interesa al operario es
+                  si el valor cumple la norma. «Calidad» es un dato técnico
+                  (¿el sensor entrega señal?) y va después.
+                */}
+                <TableHead>Nivel</TableHead>
+                <TableHead>Calidad del dato</TableHead>
                 <TableHead>Registrado</TableHead>
               </TableRow>
             </TableHeader>
@@ -113,7 +120,12 @@ export function HistorialMediciones() {
                   <TableCell>
                     {m.valor_numerico ?? m.valor_texto ?? "—"}
                   </TableCell>
-                  <TableCell>{m.calidad}</TableCell>
+                  <TableCell>
+                    <BadgeNivel nivel={m.nivel} />
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {m.calidad}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
                     {formatearFecha(m.registrado_en)}
                   </TableCell>

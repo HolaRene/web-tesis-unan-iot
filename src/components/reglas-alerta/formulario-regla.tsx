@@ -42,6 +42,7 @@ import {
   resumenCondicion,
   type DefinicionOperador,
 } from "@/utilidades/reglas-alerta";
+import { VistaPreviaNivel } from "@/components/reglas-alerta/vista-previa-nivel";
 
 // ─────────────────────────────────────────────────────────────────────
 // Severidades
@@ -507,6 +508,28 @@ export default function FormularioRegla({ canal }: { canal: Canal }) {
         >
           {mut.isPending ? "Guardando…" : "Crear regla"}
         </Button>
+        {/*
+          Vista previa del nivel con el último valor del canal.
+          Consulta al backend: NO se recalcula aquí la clasificación.
+        */}
+        <VistaPreviaNivel
+          valor={canal.ultimo_valor_numerico ?? null}
+          unidad={canal.unidad}
+          reglas={[
+            {
+              variable: canal.codigo,
+              tipos_variable: [canal.tipo_codigo ?? "TEMPERATURA"],
+              nombre: nombre.trim() || "Regla en edición",
+              operador,
+              valor_referencia_numerico:
+                esNum && !usaRango ? Number(refNum) || null : null,
+              valor_min: esNum && usaRango ? Number(vmin) || null : null,
+              valor_max: esNum && usaRango ? Number(vmax) || null : null,
+              severidad,
+              mensaje: mensaje.trim() || null,
+            },
+          ]}
+        />
         {faltaReferencia ? (
           <span className="text-xs text-muted-foreground">
             Indica el valor de referencia para continuar.

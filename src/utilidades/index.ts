@@ -7,3 +7,4 @@ export * from "./estado";
 export * from "./sesion";
 export * from "./datos-demo";
 export * from "./magnitudes";
+export * from "./nivel";

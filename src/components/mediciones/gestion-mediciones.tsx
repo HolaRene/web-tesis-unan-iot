@@ -32,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PanelesGraficosMediciones } from "@/components/mediciones/paneles-graficos-mediciones";
 import { useEventosMediciones } from "@/hooks/use-eventos-mediciones";
 import { formatearFecha } from "@/utilidades";
+import { BadgeNivel } from "@/components/nivel/badge-nivel";
 
 const selectClases =
   "h-9 rounded-xl border border-border bg-card px-3 text-sm text-foreground";
@@ -144,7 +145,8 @@ export default function GestionMediciones() {
                 <TableRow>
                   <TableHead>Sensor</TableHead>
                   <TableHead>Valor</TableHead>
-                  <TableHead>Calidad</TableHead>
+                  <TableHead>Nivel</TableHead>
+                    <TableHead>Calidad del dato</TableHead>
                   <TableHead>Registrado</TableHead>
                   {puedeEscribir && <TableHead className="w-20 text-right"> </TableHead>}
                 </TableRow>
@@ -156,6 +158,11 @@ export default function GestionMediciones() {
                       {labelSensor(m.sensor_id)}
                     </TableCell>
                     <TableCell>{valorVisible(m)}</TableCell>
+                    {/* Nivel según las reglas del canal. */}
+                    <TableCell>
+                      <BadgeNivel nivel={m.nivel} />
+                    </TableCell>
+                    {/* Calidad del dato: es un tema del sensor, no de la norma. */}
                     <TableCell>
                       <QualityBadge calidad={m.calidad} />
                     </TableCell>

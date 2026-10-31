@@ -43,6 +43,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { TarjetaMagnitud } from "@/components/dashboard/tarjeta-magnitud";
 import { useAhora } from "@/hooks/useAhora";
 import { api } from "@/servicios/api";
+import type { NivelMedicion } from "@/tipos";
 import { calcularFrescura } from "@/utilidades/magnitudes-visual";
 
 /** Fila de `/canales` con lo que necesita el panel. */
@@ -55,6 +56,8 @@ interface CanalApi {
   tipo_dato: string | null;
   tipo_codigo: string | null;
   dispositivo_nombre: string | null;
+  /** Nivel del último valor (lo calcula el backend; aquí solo se pinta). */
+  ultimo_nivel?: NivelMedicion;
   ultimo_valor_numerico: number | null;
   ultimo_valor_texto: string | null;
   ultimo_valor_booleano: boolean | null;
@@ -238,6 +241,8 @@ export function PanelMagnitudes() {
                   valorBooleano: c.ultimo_valor_booleano,
                   registradoEn: c.ultimo_registrado_en,
                   dispositivoNombre: c.dispositivo_nombre,
+                  // Nivel ya calculado por el backend con las reglas del canal.
+                  nivel: c.ultimo_nivel,
                 }}
               />
             ))}

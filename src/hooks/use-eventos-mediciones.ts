@@ -47,6 +47,12 @@ function aMedicion(m: MedicionTiempoReal): Medicion {
     calidad: m.calidad,
     registrado_en: m.registrado_en ?? new Date().toISOString(),
     metadatos: null,
+    /*
+     * El nivel viene ya calculado por el backend con las reglas del canal.
+     * Se copia tal cual: recalcularlo aquí crearía una segunda
+     * implementación que podría discrepar del panel y de las alertas.
+     */
+    nivel: m.nivel,
   };
 }
 
@@ -116,6 +122,14 @@ export function useEventosMediciones() {
             ultimo_valor_booleano:
               datos.ultimo_valor_booleano ?? canal.ultimo_valor_booleano,
             ultimo_registrado_en: datos.registrado_en ?? canal.ultimo_registrado_en,
+            /*
+             * El nivel llega ya calculado por el backend. Sin esta línea la
+             * tarjeta cambiaría el valor pero conservaría el color anterior
+             * hasta el siguiente refresco.
+             */
+            ultimo_nivel:
+              (datos.ultimo_nivel as Canal["ultimo_nivel"]) ?? canal.ultimo_nivel,
+            ultima_calidad: datos.calidad ?? canal.ultima_calidad,
             // El contador sube con cada medición nueva del canal.
             cantidad_mediciones:
               canal.cantidad_mediciones != null

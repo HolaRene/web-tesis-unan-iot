@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Canal } from "@/tipos";
 import { formatearFecha } from "@/utilidades";
+import { BadgeNivel } from "@/components/nivel/badge-nivel";
 
 export function TarjetaCanal({ canal }: { canal: Canal }) {
   const valor =
@@ -27,9 +28,19 @@ export function TarjetaCanal({ canal }: { canal: Canal }) {
           </Badge>
         </div>
 
-        <div className="rounded-xl bg-muted/60 px-3 py-1.5 text-lg font-semibold">
-          {typeof valor === "number" ? `${valor} ${canal.unidad ?? ""}` : valor ?? "—"}
-          {canal.cantidad_mediciones != null && ` · ${canal.cantidad_mediciones} med.`}
+        <div className="rounded-xl bg-muted/60 px-3 py-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-lg font-semibold">
+              {typeof valor === "number" ? `${valor} ${canal.unidad ?? ""}` : valor ?? "—"}
+            </span>
+            {/* Nivel según las reglas del canal; lo calcula el backend. */}
+            <BadgeNivel nivel={canal.ultimo_nivel} />
+          </div>
+          {canal.cantidad_mediciones != null && (
+            <span className="text-xs text-muted-foreground">
+              {canal.cantidad_mediciones} mediciones
+            </span>
+          )}
         </div>
 
         <div className="space-y-1 text-sm text-muted-foreground">

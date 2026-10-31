@@ -30,6 +30,24 @@ export interface Area {
 }
 
 /** Cumplimiento de una magnitud frente al perfil normativo del área. */
+/**
+ * Nivel de un valor según las reglas de su canal.
+ *
+ * Ojo con la diferencia clave:
+ *   `calidad` dice si el DATO del sensor es válido (good/bad).
+ *   `nivel` dice si el VALOR cumple las reglas del recinto.
+ *
+ * Un valor puede tener calidad `good` y nivel `critico`: el sensor mide
+ * bien, pero lo que mide está fuera de norma.
+ */
+export type NivelMedicion =
+  | "bueno"
+  | "advertencia"
+  | "critico"
+  | "falla"
+  | "sin_datos"
+  | "sin_regla";
+
 export interface CumplimientoMagnitud {
   tipo_codigo: string;
   tipo_nombre: string;
@@ -42,6 +60,10 @@ export interface CumplimientoMagnitud {
   maximo: number | null;
   cubierta: boolean;
   requiere_verificacion: boolean;
+  /** Nivel calculado con las reglas (canal primero, norma del área después). */
+  nivel?: NivelMedicion;
+  /** De dónde salieron las reglas usadas para clasificar. */
+  origen_reglas?: "canal" | "area" | null;
 }
 
 /** GET /api/v1/areas/:id/cumplimiento */
@@ -56,8 +78,14 @@ export interface CumplimientoArea {
   magnitudes: CumplimientoMagnitud[];
   resumen: {
     total: number;
+    /** Campos heredados del modelo de 2 estados. */
     cumple: number;
     fuera: number;
+    /** Reparto por nivel: el que usa la vista de cumplimiento. */
+    bueno: number;
+    advertencia: number;
+    critico: number;
+    falla: number;
     sin_datos: number;
     sin_regla: number;
   };
@@ -173,6 +201,8 @@ export interface Medicion {
   calidad: string;
   registrado_en: string;
   metadatos: Record<string, unknown> | null;
+  /** Nivel calculado con las reglas del canal (no se guarda). */
+  nivel?: NivelMedicion;
 }
 
 /**
@@ -431,6 +461,10 @@ export interface Canal {
   ultimo_registrado_en?: string | null;
   cantidad_mediciones?: number | null;
   alerta_activa?: boolean;
+  /** Nivel del último valor según las reglas del canal. */
+  ultimo_nivel?: NivelMedicion;
+  /** Calidad de la última medición. */
+  ultima_calidad?: string | null;
 }
 
 export interface ReglaAlerta {

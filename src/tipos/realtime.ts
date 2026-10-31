@@ -3,7 +3,7 @@
  *
  * Deben coincidir con el contrato del backend (`api/src/realtime/eventos.ts`).
  */
-import type { Dispositivo } from "@/tipos";
+import type { Dispositivo, NivelMedicion } from "@/tipos";
 
 /** Eventos de dominio soportados por el canal realtime. */
 export type TipoEventoTiempoReal =
@@ -75,6 +75,13 @@ export interface MedicionTiempoReal {
   valor_json: Record<string, unknown> | null;
   calidad: string;
   registrado_en: string | null;
+  /**
+   * Nivel ya calculado por el backend con las reglas del canal.
+   *
+   * La web NO debe recalcularlo: si lo hiciera por su cuenta podría
+   * discrepar del panel y de las alertas ante el mismo valor.
+   */
+  nivel?: NivelMedicion;
 }
 
 /** Payload de `medicion:nueva` (un evento por lote). */
@@ -97,4 +104,6 @@ export interface PayloadCanalActualizado {
   ultimo_valor_booleano: boolean | null;
   calidad: string;
   registrado_en: string | null;
+  /** Nivel del último valor tras esta actualización. */
+  ultimo_nivel?: NivelMedicion;
 }

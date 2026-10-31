@@ -27,7 +27,11 @@
  */
 import { useMemo } from "react";
 import Link from "next/link";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { BookOpen } from "lucide-react";
+import { DialogoAsignarNorma } from "@/components/areas/dialogo-asignar-norma";
+import { Button } from "@/components/ui/button";
 import {
   AlertTriangle,
   Camera,
@@ -66,6 +70,9 @@ import type { Sensor } from "@/tipos";
 export function VistaDetalleArea({ id }: { id: string }) {
   // Los eventos realtime mantienen el estado de los dispositivos al día.
   useEventosDispositivos();
+
+  // Diálogo para asignar una norma a todos los canales del área.
+  const [normaAbierta, setNormaAbierta] = useState(false);
 
   const areaQ = useQuery({
     queryKey: ["area", id],
@@ -216,7 +223,29 @@ export function VistaDetalleArea({ id }: { id: string }) {
         la banda del perfil declarado en el área. Es lo que responde «¿se está
         aplicando la norma aquí?».
       */}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {/*
+          Sin una norma asignada, el cumplimiento no tiene contra qué
+          comparar. Este botón es la puerta de entrada a configurarlo.
+        */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setNormaAbierta(true)}
+        >
+          <BookOpen className="size-4" aria-hidden />
+          Asignar norma al área
+        </Button>
+      </div>
+
       <CumplimientoArea areaId={id} />
+
+      <DialogoAsignarNorma
+        areaId={id}
+        perfilActual={areaQ.data?.perfil_alerta ?? null}
+        abierto={normaAbierta}
+        alCerrar={() => setNormaAbierta(false)}
+      />
 
       {/* Dispositivos */}
       <Card>

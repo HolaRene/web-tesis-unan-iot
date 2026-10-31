@@ -28,47 +28,32 @@ import {
   CircleHelp,
   Clock,
   AlertCircle,
+  AlertTriangle,
   ShieldCheck,
   TriangleAlert,
+  Unplug,
 } from "lucide-react";
 
 import { obtenerCumplimientoArea } from "@/servicios/areas.servicio";
+import { ESTILO_NIVEL, estiloDeNivel } from "@/utilidades/nivel";
+import { BadgeNivel } from "@/components/nivel/badge-nivel";
 import { POLLING_RESPALDO_MS } from "@/configuracion/realtime";
 import { haceTiempo } from "@/utilidades/formato";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { CumplimientoMagnitud } from "@/tipos";
+
 import { cn } from "@/lib/utils";
 
 /** A partir de aquí, un dato se considera antiguo y no acredita cumplimiento. */
 const DATO_ANTIGUO_MS = 15 * 60_000;
 
-const ESTILO: Record<
-  CumplimientoMagnitud["estado"],
-  { Icono: typeof CheckCircle2; clases: string; etiqueta: string }
-> = {
-  cumple: {
-    Icono: CheckCircle2,
-    clases: "text-emerald-600 dark:text-emerald-400",
-    etiqueta: "Cumple",
-  },
-  fuera: {
-    Icono: AlertCircle,
-    clases: "text-red-600 dark:text-red-400",
-    etiqueta: "Fuera de norma",
-  },
-  sin_datos: {
-    Icono: Clock,
-    clases: "text-muted-foreground",
-    etiqueta: "Sin datos",
-  },
-  sin_regla: {
-    Icono: CircleHelp,
-    clases: "text-muted-foreground",
-    etiqueta: "Sin regla",
-  },
-};
+/*
+ * Aquí vivía un mapa `ESTILO` propio con «Cumple» / «Fuera de norma».
+ *
+ * Se eliminó al unificar en `utilidades/nivel.ts`: tener dos mapas hacía
+ * que el mismo valor se viera distinto en esta tarjeta y en las demás.
+ */
 
 function esAntiguo(medidoEn: string | null): boolean {
   if (!medidoEn) return true;
@@ -143,25 +128,33 @@ export function CumplimientoArea({ areaId }: { areaId: string }) {
       <CardContent className="space-y-3">
         {/* Recuento */}
         <div className="flex flex-wrap gap-2 text-xs">
+          <Badge variant="outline" className={ESTILO_NIVEL.bueno.fondo + " gap-1"}>
+            <CheckCircle2 className="size-3" aria-hidden />
+            {resumen.bueno ?? 0} bueno{resumen.bueno === 1 ? "" : "s"}
+          </Badge>
           <Badge
             variant="outline"
-            className="gap-1 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+            className={ESTILO_NIVEL.advertencia.fondo + " gap-1"}
           >
-            <CheckCircle2 className="size-3" aria-hidden />
-            {resumen.cumple} en norma
+            <AlertTriangle className="size-3" aria-hidden />
+            {resumen.advertencia ?? 0} en advertencia
           </Badge>
           <Badge
             variant="outline"
             className={cn(
               "gap-1",
-              resumen.fuera > 0
-                ? "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300"
-                : ""
+              (resumen.critico ?? 0) > 0 ? ESTILO_NIVEL.critico.fondo : ""
             )}
           >
             <AlertCircle className="size-3" aria-hidden />
-            {resumen.fuera} fuera
+            {resumen.critico ?? 0} crítico{resumen.critico === 1 ? "" : "s"}
           </Badge>
+          {(resumen.falla ?? 0) > 0 ? (
+            <Badge variant="outline" className={ESTILO_NIVEL.falla.fondo + " gap-1"}>
+              <Unplug className="size-3" aria-hidden />
+              {resumen.falla} con falla de sensor
+            </Badge>
+          ) : null}
           <Badge variant="outline" className="gap-1">
             <Clock className="size-3" aria-hidden />
             {resumen.sin_datos} sin datos
@@ -177,8 +170,15 @@ export function CumplimientoArea({ areaId }: { areaId: string }) {
         {/* Detalle por magnitud */}
         <ul className="space-y-2">
           {magnitudes.map((m) => {
-            const estilo = ESTILO[m.estado];
-            const antigua = m.estado !== 'sin_regla' && esAntiguo(m.medido_en);
+            /*
+             * Se pinta el NIVEL (bueno/advertencia/crítico/falla), no el
+             * estado de 2 valores anterior. El nivel lo calcula el backend
+             * con las reglas: la web no lo reinterpreta.
+             */
+            const estilo = estiloDeNivel(m.nivel);
+            const nivel = m.nivel ?? "sin_regla";
+            const antigua =
+              nivel !== "sin_regla" && nivel !== "sin_datos" && esAntiguo(m.medido_en);
 
             return (
               <li
@@ -197,7 +197,21 @@ export function CumplimientoArea({ areaId }: { areaId: string }) {
                   <span className="block text-xs text-muted-foreground">
                     {m.banda
                       ? `Banda ${m.banda}${m.unidad ? ` ${m.unidad}` : ""}`
-                      : "Este perfil no define banda para esta magnitud"}
+                      : "Sin banda definida para esta magnitud"}
+                    {/*
+                      De dónde salió la banda. Un valor puede regirse por una
+                      regla propia del canal o, en su defecto, por la norma
+                      del recinto: no es lo mismo y conviene poder verlo.
+                    */}
+                    {m.origen_reglas === "canal" ? (
+                      <span className="ml-1 text-[11px] text-muted-foreground/80">
+                        (reglas del canal)
+                      </span>
+                    ) : m.origen_reglas === "area" ? (
+                      <span className="ml-1 text-[11px] text-muted-foreground/80">
+                        (de la norma del área)
+                      </span>
+                    ) : null}
                   </span>
                 </span>
 
@@ -216,9 +230,7 @@ export function CumplimientoArea({ areaId }: { areaId: string }) {
                   </span>
                 </span>
 
-                <Badge variant="outline" className={cn("gap-1", estilo.clases)}>
-                  {estilo.etiqueta}
-                </Badge>
+                <BadgeNivel nivel={nivel} />
 
                 {/*
                   Un valor marcado [verificar] viene de una fuente sin
